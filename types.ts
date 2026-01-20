@@ -6,6 +6,7 @@ export interface MilkRecord {
   pricePerLiter: number;
   timestamp: number;
   status?: 'PAID' | 'UNPAID';
+  pendingSync?: boolean; // New: True if waiting to upload
 }
 
 export interface Note {
@@ -14,6 +15,7 @@ export interface Note {
   content: string;
   date: string;
   timestamp: number;
+  pendingSync?: boolean; // New: True if waiting to upload
 }
 
 export interface FolderSummary {

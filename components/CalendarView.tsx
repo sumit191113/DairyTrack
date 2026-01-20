@@ -45,7 +45,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onBack, records, onE
   const selectedDayTotal = selectedRecords?.reduce((acc, r) => acc + r.quantity, 0) || 0;
   const selectedDayAmount = selectedRecords?.reduce((acc, r) => acc + r.totalPrice, 0) || 0;
   
-  const selectedDayPrice = selectedDayTotal > 0 ? (selectedDayAmount / selectedDayTotal).toFixed(2) : "0";
+  const selectedDayPrice = selectedDayTotal > 0 ? (selectedDayAmount / selectedDayTotal).toFixed(2) : "0.00";
 
   return (
     <div className="h-full bg-gray-50 flex flex-col animate-in slide-in-from-bottom-10 duration-300">
@@ -137,14 +137,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onBack, records, onE
                         <div className="bg-blue-50 p-2.5 rounded-full mb-2">
                              <Droplets size={20} className="text-blue-500" />
                         </div>
-                        <span className="text-xl font-bold text-gray-800 leading-none">{selectedDayTotal.toFixed(1)}L</span>
+                        <span className="text-xl font-bold text-gray-800 leading-none">{selectedDayTotal.toFixed(2)}L</span>
                         <span className="text-xs text-gray-400 font-bold uppercase mt-1">Total Milk</span>
                     </div>
                     <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
                         <div className="bg-green-50 p-2.5 rounded-full mb-2">
                              <Banknote size={20} className="text-green-500" />
                         </div>
-                        <span className="text-xl font-bold text-gray-800 leading-none">₹{selectedDayAmount}</span>
+                        <span className="text-xl font-bold text-gray-800 leading-none">₹{selectedDayAmount.toFixed(2)}</span>
                         <span className="text-xs text-gray-400 font-bold uppercase mt-1">Amount</span>
                     </div>
                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">

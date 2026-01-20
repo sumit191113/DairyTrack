@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { MilkRecord, FolderSummary } from '../types';
-import { Folder, ChevronRight, Droplets, Banknote, Edit2, Trash2, ArrowLeft, TrendingUp, AlertTriangle, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { Folder, ChevronRight, Droplets, Banknote, Edit2, Trash2, ArrowLeft, TrendingUp, AlertTriangle, FileText, CheckCircle2, Clock, CloudUpload } from 'lucide-react';
 
 interface RecordListProps {
   records: MilkRecord[];
@@ -222,9 +222,16 @@ export const RecordList: React.FC<RecordListProps> = ({ records, onBack, onEdit,
             {selectedFolder?.records.map((record) => (
                 <div key={record.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
                 <div className="flex justify-between items-center mb-4">
-                    <span className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold">
-                    {new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                         <span className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold">
+                            {new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {record.pendingSync && (
+                            <span className="bg-orange-50 text-orange-600 px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center">
+                                <CloudUpload size={10} className="mr-1" /> Pending
+                            </span>
+                        )}
+                    </div>
                     <div className="flex space-x-3">
                     <button onClick={() => onEdit(record)} className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-colors">
                         <Edit2 size={20} />

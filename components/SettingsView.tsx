@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, VolumeX, FileDown, Lock, Trash2, Info, ChevronRight, Check, AlertTriangle, FileText, Table, File, Calendar, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, FileDown, Lock, Unlock, Trash2, ChevronRight, AlertTriangle, FileText, Table, File, ChevronLeft } from 'lucide-react';
 import { AppView, MilkRecord } from '../types';
 
 interface SettingsViewProps {
@@ -12,7 +12,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
   // --- State ---
   const [soundsEnabled, setSoundsEnabled] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(true);
+  
+  // Lock State
   const [appLockEnabled, setAppLockEnabled] = useState(false);
+  const [savedPin, setSavedPin] = useState<string | null>(null);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
   
   // Export State
   const [showExportModal, setShowExportModal] = useState(false);
@@ -23,11 +30,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
-  // Lock State
-  const [showPinSetup, setShowPinSetup] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [confirmPinInput, setConfirmPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
 
   // --- Load Settings on Mount ---
   useEffect(() => {
@@ -36,7 +38,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
       const parsed = JSON.parse(savedSettings);
       setSoundsEnabled(parsed.soundsEnabled ?? true);
       setAlertsEnabled(parsed.alertsEnabled ?? true);
-      setAppLockEnabled(!!parsed.appLockPin);
+      
+      // Determine Lock State
+      // If undefined, it defaults to '1911' (handled in App.tsx logic on startup), 
+      // so we reflect that here visually as enabled.
+      // If explicitly null, it is disabled.
+      if (parsed.appLockPin === undefined) {
+          setAppLockEnabled(true);
+          setSavedPin('1911');
+      } else if (parsed.appLockPin === null) {
+          setAppLockEnabled(false);
+          setSavedPin(null);
+      } else {
+          setAppLockEnabled(true);
+          setSavedPin(parsed.appLockPin);
+      }
+    } else {
+        // Defaults if no settings found (First run)
+        setAppLockEnabled(true);
+        setSavedPin('1911');
     }
   }, []);
 
@@ -73,17 +93,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
     // Save PIN
     saveSettings({ appLockPin: pinInput });
     setAppLockEnabled(true);
+    setSavedPin(pinInput);
+    
     setShowPinSetup(false);
     setPinInput('');
     setConfirmPinInput('');
     setPinError('');
-    alert('App Lock Enabled Successfully!');
   };
 
   const handleDisableLock = () => {
-    if (window.confirm('Disable App Lock? You will no longer need a PIN to enter.')) {
+    if (window.confirm('Disable App Lock? Any user will be able to access the app without a password.')) {
         saveSettings({ appLockPin: null });
         setAppLockEnabled(false);
+        setSavedPin(null);
     }
   };
 
@@ -117,7 +139,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
           }
       }
       
-      // Sort by date ASC for export usually looks better, but DESC is fine too. Let's stick to Date Descending as stored.
       return data;
   };
 
@@ -158,7 +179,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
   };
 
   const exportToExcel = (data: MilkRecord[]) => {
-    // Simple HTML Table export for Excel
     let table = '<table border="1"><thead><tr><th>Date</th><th>Quantity (L)</th><th>Total Price</th><th>Rate</th></tr></thead><tbody>';
     data.forEach(r => {
         table += `<tr><td>${r.date}</td><td>${r.quantity}</td><td>${r.totalPrice}</td><td>${r.pricePerLiter}</td></tr>`;
@@ -168,7 +188,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
     const dataType = 'application/vnd.ms-excel';
     const tableHtml = table.replace(/ /g, '%20');
     
-    // Create download link
     const a = document.createElement('a');
     a.href = `data:${dataType}, ${tableHtml}`;
     a.download = `milk_records_${new Date().toISOString().split('T')[0]}.xls`;
@@ -261,12 +280,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
              <button onClick={() => setShowPinSetup(false)} className="self-start p-3 bg-gray-100 rounded-full mb-6">
                 <ArrowLeft size={24} />
              </button>
-             <h2 className="text-2xl font-bold text-gray-800 mb-2">Set App Lock</h2>
+             <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                {appLockEnabled ? 'Change PIN' : 'Set App Lock'}
+             </h2>
              <p className="text-gray-500 mb-8">Create a 4-digit PIN to secure your data.</p>
              
              <form onSubmit={handlePinSubmit} className="space-y-6">
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Enter PIN</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Enter New PIN</label>
                     <input 
                         type="password" 
                         maxLength={4}
@@ -278,7 +299,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Confirm PIN</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Confirm New PIN</label>
                     <input 
                         type="password" 
                         maxLength={4}
@@ -290,10 +311,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                     />
                 </div>
                 
-                {pinError && <p className="text-red-500 text-sm font-bold text-center">{pinError}</p>}
+                {pinError && <p className="text-red-500 text-sm font-bold text-center animate-pulse">{pinError}</p>}
 
                 <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 mt-4 active:scale-95 transition-transform">
-                    Set PIN Code
+                    {appLockEnabled ? 'Update PIN' : 'Enable Lock'}
                 </button>
              </form>
         </div>
@@ -355,6 +376,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
             </div>
         </section>
 
+        {/* Section: Security */}
+        <section>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Security</h3>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                 <div className="flex items-center justify-between p-5">
+                    <div className="flex items-center space-x-4">
+                        <div className={`p-2.5 rounded-xl ${appLockEnabled ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                            {appLockEnabled ? <Lock size={22} /> : <Unlock size={22} />}
+                        </div>
+                        <div>
+                            <p className="font-bold text-gray-800">App Lock</p>
+                            <p className="text-xs text-gray-500">
+                                {appLockEnabled 
+                                    ? (savedPin === '1911' ? 'Active (Default PIN: 1911)' : 'Active (Custom PIN)') 
+                                    : 'Currently disabled'}
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => appLockEnabled ? handleDisableLock() : setShowPinSetup(true)}
+                        className={`w-12 h-7 rounded-full transition-colors relative ${appLockEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm ${appLockEnabled ? 'left-6' : 'left-1'}`}></div>
+                    </button>
+                </div>
+                {appLockEnabled && (
+                    <button 
+                        onClick={() => setShowPinSetup(true)}
+                        className="w-full text-left px-5 py-4 text-sm font-bold text-blue-600 border-t border-gray-50 hover:bg-gray-50 flex items-center justify-between"
+                    >
+                        Change PIN Code
+                        <ChevronRight size={16} />
+                    </button>
+                )}
+            </div>
+        </section>
+
         {/* Section: Data */}
         <section>
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Data Management</h3>
@@ -390,30 +448,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                     </div>
                     <ChevronRight size={20} className="text-gray-300" />
                 </button>
-            </div>
-        </section>
-
-        {/* Section: Security */}
-        <section>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Security</h3>
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                 <div className="flex items-center justify-between p-5">
-                    <div className="flex items-center space-x-4">
-                        <div className={`p-2.5 rounded-xl ${appLockEnabled ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
-                            <Lock size={22} />
-                        </div>
-                        <div>
-                            <p className="font-bold text-gray-800">App Lock</p>
-                            <p className="text-xs text-gray-500">{appLockEnabled ? 'Protected with PIN' : 'Secure your app'}</p>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={() => appLockEnabled ? handleDisableLock() : setShowPinSetup(true)}
-                        className={`w-12 h-7 rounded-full transition-colors relative ${appLockEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
-                    >
-                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm ${appLockEnabled ? 'left-6' : 'left-1'}`}></div>
-                    </button>
-                </div>
             </div>
         </section>
 

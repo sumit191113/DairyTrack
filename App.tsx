@@ -35,15 +35,35 @@ const App: React.FC = () => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
 
-  // Check App Lock on Load
+  // Check App Lock on Load and Enforce Default "1911"
   useEffect(() => {
-    const settings = localStorage.getItem('dairyTrackSettings');
-    if (settings) {
-      const parsed = JSON.parse(settings);
-      if (parsed.appLockPin) {
-        setLockPin(parsed.appLockPin);
-        setIsLocked(true);
+    const settingsStr = localStorage.getItem('dairyTrackSettings');
+    let settings = {
+        soundsEnabled: true,
+        alertsEnabled: true,
+        appLockPin: '1911' // Default Password
+    };
+
+    if (settingsStr) {
+      const parsed = JSON.parse(settingsStr);
+      
+      // If settings exist but appLockPin is undefined (legacy or first time with new feature), set default
+      if (parsed.appLockPin === undefined) {
+         parsed.appLockPin = '1911';
+         localStorage.setItem('dairyTrackSettings', JSON.stringify({ ...parsed, appLockPin: '1911' }));
+         settings = { ...parsed, appLockPin: '1911' };
+      } else {
+         settings = parsed;
       }
+    } else {
+      // First time app load ever
+      localStorage.setItem('dairyTrackSettings', JSON.stringify(settings));
+    }
+
+    // Apply Lock if a PIN is set (which is true by default now)
+    if (settings.appLockPin) {
+      setLockPin(settings.appLockPin);
+      setIsLocked(true);
     }
   }, []);
 
@@ -84,6 +104,7 @@ const App: React.FC = () => {
     } else {
       setPinError(true);
       setPinInput('');
+      setTimeout(() => setPinError(false), 2000);
     }
   };
 
@@ -166,16 +187,16 @@ const App: React.FC = () => {
   // App Lock Overlay
   if (isLocked) {
     return (
-      <div className="h-[100dvh] w-full bg-blue-600 flex flex-col items-center justify-center p-6 text-white relative overflow-hidden">
+      <div className="h-[100dvh] w-full bg-blue-600 flex flex-col items-center justify-center p-6 text-white relative overflow-hidden animate-in fade-in duration-300">
         <div className="absolute top-[-100px] right-[-100px] w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-[-50px] left-[-50px] w-60 h-60 bg-white/10 rounded-full blur-3xl"></div>
         
-        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mb-8 shadow-xl border border-white/20">
-            <Lock size={40} className="text-white" />
+        <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mb-8 shadow-xl border border-white/20">
+            <Lock size={48} className="text-white" />
         </div>
         
         <h1 className="text-3xl font-bold mb-2">DairyTrack Locked</h1>
-        <p className="text-blue-100 mb-8">Enter PIN to access your records</p>
+        <p className="text-blue-100 mb-8 opacity-90">Enter PIN to access your records</p>
 
         <form onSubmit={handleUnlock} className="w-full max-w-xs flex flex-col items-center">
             <input 
@@ -188,14 +209,14 @@ const App: React.FC = () => {
                   setPinInput(e.target.value.replace(/\D/g,''));
                   setPinError(false);
               }}
-              className={`w-full bg-white/20 backdrop-blur-sm border ${pinError ? 'border-red-300' : 'border-white/30'} p-4 rounded-2xl text-center text-4xl tracking-[0.5em] font-bold outline-none placeholder-blue-200/50 text-white transition-all`}
+              className={`w-full bg-white/20 backdrop-blur-sm border ${pinError ? 'border-red-300' : 'border-white/30'} p-4 rounded-2xl text-center text-4xl tracking-[0.5em] font-bold outline-none placeholder-blue-200/50 text-white transition-all focus:bg-white/30`}
               placeholder="••••"
               autoFocus
             />
-            {pinError && <p className="text-red-200 font-bold mt-4 animate-pulse">Incorrect PIN</p>}
+            {pinError && <p className="text-white bg-red-500/80 px-4 py-2 rounded-lg text-sm font-bold mt-4 animate-bounce">Incorrect PIN. Try again.</p>}
             
-            <button type="submit" className="w-full mt-8 bg-white text-blue-600 py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-transform">
-                Unlock
+            <button type="submit" className="w-full mt-8 bg-white text-blue-600 py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-transform hover:bg-blue-50">
+                Unlock App
             </button>
         </form>
       </div>

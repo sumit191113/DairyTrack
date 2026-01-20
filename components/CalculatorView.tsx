@@ -72,7 +72,7 @@ export const CalculatorView: React.FC<CalculatorViewProps> = ({ onBack }) => {
     return (
       <button 
         onClick={onClick}
-        className={`${bgClass} rounded-2xl text-3xl font-semibold shadow-sm border border-gray-100 flex items-center justify-center h-20 active:scale-95 transition-transform`}
+        className={`${bgClass} rounded-2xl text-2xl sm:text-3xl font-semibold shadow-sm border border-gray-100 flex items-center justify-center h-16 sm:h-20 active:scale-95 transition-transform`}
       >
         {label}
       </button>
@@ -80,26 +80,26 @@ export const CalculatorView: React.FC<CalculatorViewProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 animate-in slide-in-from-bottom-10 duration-300">
+    <div className="flex flex-col bg-gray-50 animate-in slide-in-from-bottom-10 duration-300 h-[calc(100%-90px)] rounded-b-[2.5rem] shadow-xl overflow-hidden border-b border-gray-200 relative z-0">
       
       {/* Header */}
-      <div className="flex items-center space-x-4 p-6 bg-white shadow-sm z-10 sticky top-0 pt-safe">
+      <div className="flex items-center space-x-4 p-5 bg-white shadow-sm z-10 sticky top-0 pt-safe">
         <button onClick={onBack} className="p-3 bg-gray-100 rounded-2xl hover:bg-gray-200 shadow-sm transition-colors active:scale-90">
-          <ArrowLeft size={28} className="text-gray-700" />
+          <ArrowLeft size={24} className="text-gray-700" />
         </button>
-        <h2 className="text-2xl font-bold text-gray-800">Calculator</h2>
+        <h2 className="text-xl font-bold text-gray-800">Calculator</h2>
       </div>
 
       {/* Display */}
-      <div className="flex-1 bg-white p-8 flex flex-col items-end justify-end border-b border-gray-100">
-        <div className="text-gray-400 text-xl h-8 mb-2">{equation}</div>
-        <div className="text-6xl font-bold text-gray-800 break-all">{display}</div>
+      <div className="flex-1 bg-white p-6 flex flex-col items-end justify-end border-b border-gray-100">
+        <div className="text-gray-400 text-lg h-6 mb-1 truncate w-full text-right">{equation}</div>
+        <div className="text-5xl sm:text-6xl font-bold text-gray-800 break-all leading-tight">{display}</div>
       </div>
 
       {/* Keypad */}
-      <div className="p-6 grid grid-cols-4 gap-4 bg-gray-50 pb-32">
+      <div className="p-4 grid grid-cols-4 gap-3 bg-gray-50 pb-6">
         <Button label="AC" type="action" onClick={handleClear} />
-        <Button label={<Delete size={28} />} type="action" onClick={handleBackspace} />
+        <Button label={<Delete size={24} />} type="action" onClick={handleBackspace} />
         <Button label="%" type="action" onClick={handlePercent} />
         <Button label="÷" type="operator" onClick={() => handleOperator('/')} />
 
@@ -123,7 +123,7 @@ export const CalculatorView: React.FC<CalculatorViewProps> = ({ onBack }) => {
         <div className="col-span-2">
             <button 
                 onClick={handleEqual}
-                className="w-full h-20 bg-blue-600 text-white rounded-2xl text-4xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-transform"
+                className="w-full h-16 sm:h-20 bg-blue-600 text-white rounded-2xl text-3xl sm:text-4xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-transform"
             >
                 =
             </button>
