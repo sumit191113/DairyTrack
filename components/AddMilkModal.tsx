@@ -88,7 +88,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
       quantity: parseFloat(quantity),
       totalPrice: parseFloat(totalPrice),
       pricePerLiter: pricePerLiter,
-      timestamp: Date.now(),
+      timestamp: existingRecord?.timestamp || Date.now(), // Preserve timestamp if editing
       status: existingRecord?.status || 'UNPAID', // Default to UNPAID
     };
 

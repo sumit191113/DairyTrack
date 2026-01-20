@@ -30,7 +30,7 @@ const generateId = () => {
 // Check if online
 const isOnline = () => navigator.onLine;
 
-// --- Synchronization Logic ---
+// --- Local Storage Helpers ---
 
 const getLocalPending = <T>(key: string): T[] => {
   try {
@@ -44,6 +44,52 @@ const getLocalPending = <T>(key: string): T[] => {
 const setLocalPending = <T>(key: string, data: T[]) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
+
+// --- State & Notification Logic ---
+
+const recordListeners: ((records: MilkRecord[]) => void)[] = [];
+let cachedServerRecords: MilkRecord[] = [];
+
+const noteListeners: ((notes: Note[]) => void)[] = [];
+let cachedServerNotes: Note[] = [];
+
+// Notify Record Subscribers (Merges Server + Pending)
+const notifyRecordListeners = () => {
+  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
+  
+  // Merge Strategy: Pending records override server records with same ID
+  const recordMap = new Map<string, MilkRecord>();
+  
+  // 1. Populate with server data
+  cachedServerRecords.forEach(r => recordMap.set(r.id, r));
+  
+  // 2. Overlay pending data
+  pending.forEach(r => recordMap.set(r.id, r));
+
+  const combined = Array.from(recordMap.values());
+  
+  // Sort by Date Descending
+  combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  recordListeners.forEach(cb => cb(combined));
+};
+
+// Notify Note Subscribers (Merges Server + Pending)
+const notifyNoteListeners = () => {
+  const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
+  const noteMap = new Map<string, Note>();
+  
+  cachedServerNotes.forEach(n => noteMap.set(n.id, n));
+  pending.forEach(n => noteMap.set(n.id, n));
+
+  const combined = Array.from(noteMap.values());
+  // Sort by Timestamp Descending
+  combined.sort((a, b) => b.timestamp - a.timestamp);
+  
+  noteListeners.forEach(cb => cb(combined));
+};
+
+// --- Synchronization Logic ---
 
 // Generic Sync Function
 export const syncAllPendingData = async () => {
@@ -66,6 +112,7 @@ export const syncAllPendingData = async () => {
       }
     }
     setLocalPending(LOCAL_STORAGE_KEY_RECORDS, remainingRecords);
+    notifyRecordListeners(); // Refresh UI to remove 'pending' status
   }
 
   // 2. Sync Notes
@@ -82,6 +129,7 @@ export const syncAllPendingData = async () => {
       }
     }
     setLocalPending(LOCAL_STORAGE_KEY_NOTES, remainingNotes);
+    notifyNoteListeners(); // Refresh UI to remove 'pending' status
   }
 
   // 3. Sync Deletions (Soft Deletes / Moves)
@@ -107,37 +155,6 @@ setTimeout(syncAllPendingData, 2000);
 
 
 // --- Milk Records Manager ---
-
-// We need an event system to notify subscribers when LOCAL data changes,
-// because Firebase 'onValue' only fires when SERVER data changes.
-const recordListeners: ((records: MilkRecord[]) => void)[] = [];
-let cachedServerRecords: MilkRecord[] = [];
-
-const notifyRecordListeners = () => {
-  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-  
-  // Merge Strategy:
-  // 1. Take all server records
-  // 2. If a pending record ID exists in server records (it was just synced), ignore the pending one
-  // 3. Else, add pending record to list
-  
-  const serverIds = new Set(cachedServerRecords.map(r => r.id));
-  
-  // Clean up pending list if we find them in server data (Sync happened successfully)
-  const stillPending = pending.filter(p => !serverIds.has(p.id));
-  
-  // If we filtered out some pending items, update local storage
-  if (stillPending.length !== pending.length) {
-      setLocalPending(LOCAL_STORAGE_KEY_RECORDS, stillPending);
-  }
-
-  const combined = [...cachedServerRecords, ...stillPending];
-  
-  // Sort
-  combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
-  recordListeners.forEach(cb => cb(combined));
-};
 
 export const subscribeToRecords = (callback: (records: MilkRecord[]) => void) => {
   recordListeners.push(callback);
@@ -211,71 +228,50 @@ export const updateRecord = async (record: MilkRecord) => {
 };
 
 export const markRecordsAsPaid = async (recordIds: string[]) => {
-    // This is a complex update, for offline simplicity, we treat it as updating multiple records
-    // In a real production app we might queue a specific "transaction", but here we just queue the updated records.
-    
-    // Find records (check local cache first as it is merged)
-    const recordsToUpdate: MilkRecord[] = [];
-    
-    // We can't easily get the specific objects if we don't have them in scope, 
-    // but the caller usually has the data. 
-    // For this implementation, we will assume online for bulk actions or fetch from cache.
-    
-    // Simplification: Direct Firebase update if online, else we skip (or need complex queue)
-    // To stick to "Offline Data Saving", we will fetch from our merged cache in memory
-    
+    // Treat as bulk update
     const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-    
+    const updates: MilkRecord[] = [];
+
     recordIds.forEach(id => {
-        let record = pending.find(r => r.id === id) || cachedServerRecords.find(r => r.id === id);
-        if (record) {
-            const updated = { ...record, status: 'PAID' as const };
-            updateRecord(updated);
+        // Find current version (pending prefers)
+        const currentPending = pending.find(r => r.id === id);
+        const currentServer = cachedServerRecords.find(r => r.id === id);
+        const base = currentPending || currentServer;
+
+        if (base) {
+            updates.push({ ...base, status: 'PAID' as const });
         }
     });
+
+    for (const u of updates) {
+        await updateRecord(u);
+    }
 };
 
 export const softDeleteRecord = async (record: MilkRecord) => {
-  // 1. Add to Trash (Deleted Records)
-  // We can treat trash adding as a regular "set" operation to a different path
-  // But we also need to remove from main list.
-  
-  // Step A: Queue removal from main list
+  // 1. Queue removal from main list (Deletion Queue)
   const pendingDeletions = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
   pendingDeletions.push({ id: record.id, path: `milkRecords/${SHARED_NAMESPACE}/${record.id}` });
   setLocalPending(LOCAL_STORAGE_KEY_DELETED, pendingDeletions);
 
-  // Step B: Queue addition to Trash path (reuse record adding logic but to different key?)
-  // For simplicity, we'll do a direct write if online, or implement a specific trash queue if strict offline is needed.
-  // Given the prompt focuses on "Milk Record Added", we'll ensure the *Removal* from the main list is instant.
-  
-  // Remove from pending records if it exists there
+  // 2. Remove from pending records if it exists there (stop it from syncing back)
   let pendingRecords = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
   pendingRecords = pendingRecords.filter(r => r.id !== record.id);
   setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pendingRecords);
 
-  // Add to Deleted Collection (We'll use a direct write for now, or a simple queue)
-  // To keep it robust offline, let's just create the deleted record in the Trash Pending Queue
-  // Actually, let's just manually update the cache to hide it, and queue the deletion.
-  // To persist the "Moved to trash" state offline, we really should write to a local "Trash" store.
-  
-  // For this assignment, let's handle the primary requirement: Remove from view.
-  // We manipulate the cachedServerRecords locally to pretend it's gone until sync
+  // 3. Optimistic UI Update: Hide from cache temporarily until server confirms deletion
   cachedServerRecords = cachedServerRecords.filter(r => r.id !== record.id);
   notifyRecordListeners();
   
-  // If online, do the actual swap
+  // 4. If online, do the actual swap immediately for better UX
   if (isOnline()) {
       const deletedRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}/${record.id}`);
       await set(deletedRef, { ...record, deletedAt: Date.now() });
       const originalRef = ref(db, `milkRecords/${SHARED_NAMESPACE}/${record.id}`);
       await remove(originalRef);
   } else {
-      // Offline fallback: Queue the DELETE command. 
-      // Note: We aren't queueing the "Add to trash" in this simplified version, 
-      // so trash might only appear after online. But the main list will be correct.
-      pendingDeletions.push({ id: record.id, path: `milkRecords/${SHARED_NAMESPACE}/${record.id}` }); // Already pushed above
-      setLocalPending(LOCAL_STORAGE_KEY_DELETED, pendingDeletions);
+      // Offline fallback: The deletion queue handles removal from main list.
+      // Ideally we should also queue adding to trash, but for simplicity we rely on main list removal.
   }
 };
 
@@ -299,7 +295,6 @@ export const permanentDeleteRecord = async (recordId: string) => {
         const recordRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}/${recordId}`);
         await remove(recordRef);
     }
-    // Offline permanent delete is low priority
 };
 
 export const restoreRecord = async (record: MilkRecord) => {
@@ -315,24 +310,6 @@ export const restoreRecord = async (record: MilkRecord) => {
 
 
 // --- Notes Manager (Offline First) ---
-
-const noteListeners: ((notes: Note[]) => void)[] = [];
-let cachedServerNotes: Note[] = [];
-
-const notifyNoteListeners = () => {
-  const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
-  const serverIds = new Set(cachedServerNotes.map(n => n.id));
-  const stillPending = pending.filter(p => !serverIds.has(p.id));
-  
-  if (stillPending.length !== pending.length) {
-      setLocalPending(LOCAL_STORAGE_KEY_NOTES, stillPending);
-  }
-
-  const combined = [...cachedServerNotes, ...stillPending];
-  combined.sort((a, b) => b.timestamp - a.timestamp);
-  
-  noteListeners.forEach(cb => cb(combined));
-};
 
 export const subscribeToNotes = (callback: (notes: Note[]) => void) => {
   noteListeners.push(callback);
