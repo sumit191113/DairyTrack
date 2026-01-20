@@ -1,0 +1,5 @@
+{
+  "name": "DairyTrack",
+  "description": "A professional, offline-first dairy management app for farmers to track milk production, sync data via Firebase, and view folder-wise history.",
+  "requestFramePermissions": []
+}
