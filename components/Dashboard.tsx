@@ -1,100 +1,185 @@
-import React from 'react';
-import { Milk, BarChart3, CalendarDays, Calculator, FileText, StickyNote, ChevronRight } from 'lucide-react';
-import { AppView } from '../types';
+import React, { useMemo } from 'react';
+import { Milk, BarChart3, CalendarDays, Calculator, FileText, StickyNote, ChevronRight, Calendar, Droplets, Banknote, ClipboardCheck } from 'lucide-react';
+import { AppView, MilkRecord } from '../types';
 
 interface DashboardProps {
   onAddMilk: () => void;
   onChangeView: (view: AppView) => void;
+  records?: MilkRecord[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView }) => {
-  const QuickAction = ({ icon: Icon, label, onClick }: { icon: any, label: string, onClick?: () => void }) => (
-    <button 
-      onClick={onClick}
-      className="flex flex-col items-center justify-center space-y-3 bg-white p-4 rounded-3xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors active:scale-95 h-full w-full"
-    >
-      <Icon className="text-blue-600" size={28} />
-      <span className="text-xs font-bold text-gray-700 truncate w-full text-center">{label}</span>
-    </button>
-  );
+export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, records = [] }) => {
+  
+  const stats = useMemo(() => {
+    const safeRecords = Array.isArray(records) ? records : [];
+    return safeRecords.reduce((acc, curr) => ({
+      quantity: acc.quantity + (curr.quantity || 0),
+      amount: acc.amount + (curr.totalPrice || 0),
+      count: acc.count + 1
+    }), { quantity: 0, amount: 0, count: 0 });
+  }, [records]);
+
+  const QuickAction = ({ 
+    icon: Icon, 
+    label, 
+    onClick,
+    variant = "blue"
+  }: { 
+    icon: any, 
+    label: string, 
+    onClick?: () => void,
+    variant?: "blue" | "orange" | "green" | "purple"
+  }) => {
+    const variants = {
+      blue: { bg: "bg-blue-50", text: "text-blue-600" },
+      orange: { bg: "bg-orange-50", text: "text-orange-600" },
+      green: { bg: "bg-emerald-50", text: "text-emerald-600" },
+      purple: { bg: "bg-purple-50", text: "text-purple-600" }
+    };
+
+    const style = variants[variant];
+
+    return (
+      <button 
+        onClick={onClick}
+        className="flex flex-col items-center justify-center p-3 bg-white rounded-[2rem] shadow-sm border border-blue-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all active:scale-90 h-full w-full group"
+      >
+        <div className={`w-12 h-12 ${style.bg} rounded-2xl flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className={style.text} size={22} />
+        </div>
+        <span className="text-[10px] font-black text-gray-500 tracking-wider uppercase text-center w-full leading-tight">
+          {label}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar pb-32">
       <div className="p-6 pt-24 space-y-8 animate-in fade-in duration-500">
         
-        {/* Welcome Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-[2rem] p-8 text-white shadow-xl shadow-blue-200">
-          <div className="relative z-10">
-            <h2 className="text-3xl font-bold mb-2">Welcome Back!</h2>
-            <p className="text-blue-100 text-base font-medium">Track your dairy production efficiently</p>
-          </div>
+        {/* Ultra-Compact Professional Welcome Card */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0A58EE] via-[#1E40AF] to-[#1E3A8A] rounded-[2.5rem] p-7 text-white shadow-2xl shadow-blue-900/20">
+          {/* Abstract Mesh BG */}
+          <div className="absolute top-[-20%] left-[-10%] w-64 h-64 bg-blue-400 rounded-full blur-[100px] opacity-20"></div>
           
-          {/* Decorative background circle */}
-          <div className="absolute -right-8 -bottom-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="absolute right-4 top-4 w-12 h-12 bg-white/10 rounded-full blur-xl"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            
+            {/* Left Column: Essential Branding */}
+            <div className="flex-1 min-w-0 pr-4">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-3">
+                  <Calendar size={10} className="text-blue-200" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-blue-50">
+                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+                <h2 className="text-4xl font-black tracking-tight leading-none mb-1">Welcome!</h2>
+                <p className="text-blue-100/40 text-[9px] font-black uppercase tracking-[0.15em]">Track your dairy production</p>
+            </div>
+
+            {/* Right Column: Ultra-Compact Single-Line Stats Stack */}
+            <div className="flex flex-col gap-2.5 shrink-0 pl-5 border-l border-white/10">
+                {/* Milk Row */}
+                <div className="flex items-center gap-2">
+                    <Droplets size={12} className="text-blue-300 shrink-0" />
+                    <div className="flex items-center whitespace-nowrap">
+                        <span className="text-[9px] font-black text-blue-200/70 uppercase tracking-widest mr-1">Milk -</span>
+                        <span className="text-[12px] font-black leading-none">{stats.quantity.toFixed(1)}<span className="text-[8px] ml-0.5 opacity-60">L</span></span>
+                    </div>
+                </div>
+
+                {/* Earnings Row */}
+                <div className="flex items-center gap-2">
+                    <Banknote size={12} className="text-emerald-300 shrink-0" />
+                    <div className="flex items-center whitespace-nowrap">
+                        <span className="text-[9px] font-black text-blue-200/70 uppercase tracking-widest mr-1">Earn -</span>
+                        <span className="text-[12px] font-black leading-none">₹{stats.amount.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                {/* Logs Row */}
+                <div className="flex items-center gap-2">
+                    <ClipboardCheck size={12} className="text-purple-300 shrink-0" />
+                    <div className="flex items-center whitespace-nowrap">
+                        <span className="text-[9px] font-black text-blue-200/70 uppercase tracking-widest mr-1">Logs -</span>
+                        <span className="text-[12px] font-black leading-none">{stats.count}</span>
+                    </div>
+                </div>
+            </div>
+
+          </div>
         </div>
 
-        {/* Quick Action Grid */}
+        {/* Quick Actions Grid */}
         <div className="grid grid-cols-4 gap-3">
           <QuickAction 
             icon={StickyNote} 
             label="Notepad" 
+            variant="blue"
             onClick={() => onChangeView(AppView.NOTEPAD)} 
           />
           <QuickAction 
             icon={CalendarDays} 
             label="Calendar" 
+            variant="purple"
             onClick={() => onChangeView(AppView.CALENDAR)}
           />
           <QuickAction 
             icon={Calculator} 
-            label="Calculator" 
+            label="Calc" 
+            variant="orange"
             onClick={() => onChangeView(AppView.CALCULATOR)}
           />
           <QuickAction 
             icon={FileText} 
             label="Invoice" 
+            variant="green"
             onClick={() => onChangeView(AppView.MANAGE)}
           />
         </div>
 
-        {/* Primary Action Card */}
-        <button 
-          onClick={onAddMilk}
-          className="w-full group bg-blue-600 rounded-[2rem] p-6 flex items-center justify-between shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.99]"
-        >
-          <div className="flex items-center space-x-5">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-              <Milk className="text-white" size={32} />
-            </div>
-            <div className="text-left">
-              <h3 className="text-white font-bold text-2xl leading-tight">Add Milk</h3>
-              <p className="text-blue-100 text-base">Record milk production</p>
-            </div>
+        {/* Main Interaction Cards */}
+        <div className="space-y-4">
+          <div className="p-[3px] bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-[2.5rem] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all">
+            <button 
+              onClick={onAddMilk}
+              className="w-full group bg-white rounded-[2.3rem] p-6 flex items-center justify-between hover:bg-gray-50/50 transition-all relative overflow-hidden"
+            >
+              <div className="flex items-center space-x-5 relative z-10">
+                <div className="w-16 h-16 bg-blue-50 rounded-[1.25rem] flex items-center justify-center shadow-inner border border-blue-100 group-hover:scale-110 transition-transform duration-500">
+                  <Milk className="text-blue-600" size={32} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-gray-900 font-black text-2xl tracking-tight leading-none mb-1">Add Entry</h3>
+                  <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide opacity-60">Log Production</p>
+                </div>
+              </div>
+              <div className="w-10 h-10 bg-gray-50 rounded-full border border-gray-100 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-600 transition-all duration-300">
+                <ChevronRight className="text-gray-400 group-hover:text-white" size={20} />
+              </div>
+            </button>
           </div>
-          <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-            <ChevronRight className="text-white" size={24} />
-          </div>
-        </button>
 
-        {/* Secondary Action Card */}
-        <button 
-          onClick={() => onChangeView(AppView.HISTORY)}
-          className="w-full group bg-white rounded-[2rem] p-6 flex items-center justify-between shadow-sm border border-gray-100 hover:border-blue-200 transition-all active:scale-[0.99]"
-        >
-          <div className="flex items-center space-x-5">
-            <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-              <BarChart3 className="text-orange-600" size={32} />
-            </div>
-            <div className="text-left">
-              <h3 className="text-gray-800 font-bold text-2xl leading-tight">Milk Record</h3>
-              <p className="text-gray-500 text-base">View production history</p>
-            </div>
+          <div className="p-[3px] bg-gradient-to-br from-indigo-500 via-blue-500 to-blue-600 rounded-[2.5rem] shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all">
+            <button 
+              onClick={() => onChangeView(AppView.HISTORY)}
+              className="w-full group bg-white rounded-[2.3rem] p-6 flex items-center justify-between hover:bg-gray-50/50 transition-all relative overflow-hidden"
+            >
+              <div className="flex items-center space-x-5 relative z-10">
+                <div className="w-16 h-16 bg-orange-50 rounded-[1.25rem] flex items-center justify-center shadow-inner border border-orange-100 group-hover:scale-110 transition-transform duration-500">
+                  <BarChart3 className="text-orange-600" size={32} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-gray-900 font-black text-2xl tracking-tight leading-none mb-1">Records</h3>
+                  <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide opacity-60">View History</p>
+                </div>
+              </div>
+              <div className="w-10 h-10 bg-gray-50 rounded-full border border-gray-100 flex items-center justify-center group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-all duration-300">
+                <ChevronRight className="text-gray-400 group-hover:text-white" size={20} />
+              </div>
+            </button>
           </div>
-          <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
-            <ChevronRight className="text-gray-400" size={24} />
-          </div>
-        </button>
+        </div>
       </div>
     </div>
   );

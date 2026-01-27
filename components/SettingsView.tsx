@@ -388,9 +388,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                         <div>
                             <p className="font-bold text-gray-800">App Lock</p>
                             <p className="text-xs text-gray-500">
-                                {appLockEnabled 
-                                    ? (savedPin === '1911' ? 'Active (Default PIN: 1911)' : 'Active (Custom PIN)') 
-                                    : 'Currently disabled'}
+                                {appLockEnabled ? 'Active' : 'Currently disabled'}
                             </p>
                         </div>
                     </div>

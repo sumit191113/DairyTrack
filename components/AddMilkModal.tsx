@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, Check, CheckCircle2 } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Check, CheckCircle2, Sun, Moon } from 'lucide-react';
 import { MilkRecord } from '../types';
 
 interface AddMilkModalProps {
@@ -13,6 +13,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [quantity, setQuantity] = useState<string>('');
   const [totalPrice, setTotalPrice] = useState<string>('');
+  const [shift, setShift] = useState<'DAY' | 'NIGHT'>('DAY');
   const [pricePerLiter, setPricePerLiter] = useState<number>(0);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -23,12 +24,17 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
         setDate(existingRecord.date);
         setQuantity(existingRecord.quantity.toString());
         setTotalPrice(existingRecord.totalPrice.toString());
+        setShift(existingRecord.shift || 'DAY');
       } else {
         // Reset for new entry
         setDate(new Date().toISOString().split('T')[0]);
         setQuantity('');
         setTotalPrice('');
         setPricePerLiter(0);
+        
+        // Auto-select shift based on current hour
+        const hour = new Date().getHours();
+        setShift(hour >= 16 || hour < 4 ? 'NIGHT' : 'DAY');
       }
       setIsSuccess(false);
     }
@@ -54,7 +60,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
         if (soundsEnabled === false) return;
       }
 
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
       const t = ctx.currentTime;
@@ -88,6 +94,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
       quantity: parseFloat(quantity),
       totalPrice: parseFloat(totalPrice),
       pricePerLiter: pricePerLiter,
+      shift: shift,
       timestamp: existingRecord?.timestamp || Date.now(), // Preserve timestamp if editing
       status: existingRecord?.status || 'UNPAID', // Default to UNPAID
     };
@@ -133,8 +140,31 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
               
+              {/* Shift Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 ml-1">Session / Shift</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setShift('DAY')}
+                    className={`flex items-center justify-center space-x-2 p-4 rounded-2xl border-2 transition-all font-bold ${shift === 'DAY' ? 'bg-orange-50 border-orange-500 text-orange-600 shadow-sm' : 'bg-gray-50 border-blue-100 text-gray-400'}`}
+                  >
+                    <Sun size={20} className={shift === 'DAY' ? 'fill-orange-500/20' : ''} />
+                    <span>Day</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShift('NIGHT')}
+                    className={`flex items-center justify-center space-x-2 p-4 rounded-2xl border-2 transition-all font-bold ${shift === 'NIGHT' ? 'bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm' : 'bg-gray-50 border-blue-100 text-gray-400'}`}
+                  >
+                    <Moon size={20} className={shift === 'NIGHT' ? 'fill-indigo-500/20' : ''} />
+                    <span>Night</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Date Picker */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 ml-1">Date</label>
@@ -143,7 +173,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full p-4 pl-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-gray-800"
+                    className="w-full p-4 pl-4 bg-gray-50 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-gray-800"
                   />
                   <CalendarIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-blue-500 transition-colors" size={20} />
                 </div>
@@ -159,32 +189,31 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
                     placeholder="0.0"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold text-gray-800 placeholder-gray-300"
+                    className="w-full p-4 bg-gray-50 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold text-gray-800 placeholder-gray-300 transition-all"
                     required
                   />
                 </div>
 
                 {/* Total Price */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 ml-1">Total Amount (₹)</label>
+                  <label className="text-sm font-bold text-gray-700 ml-1">Amount (₹)</label>
                   <input 
                     type="number" 
                     placeholder="0"
                     value={totalPrice}
                     onChange={(e) => setTotalPrice(e.target.value)}
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold text-gray-800 placeholder-gray-300"
+                    className="w-full p-4 bg-gray-50 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xl font-bold text-gray-800 placeholder-gray-300 transition-all"
                     required
                   />
                 </div>
               </div>
 
               {/* Auto Calculated Price Per Liter */}
-              <div className="bg-blue-50 p-5 rounded-2xl flex items-center justify-between border border-blue-100/50">
+              <div className="bg-blue-50 p-4 rounded-2xl flex items-center justify-between border border-blue-100/50">
                 <div className="flex flex-col">
                     <span className="text-blue-600 font-semibold text-xs uppercase tracking-wider">Rate per Liter</span>
-                    <span className="text-blue-400 text-[10px] mt-0.5">Calculated automatically</span>
                 </div>
-                <span className="text-blue-700 font-bold text-2xl">
+                <span className="text-blue-700 font-bold text-xl">
                   ₹{pricePerLiter.toFixed(2)}
                 </span>
               </div>
@@ -202,7 +231,7 @@ export const AddMilkModal: React.FC<AddMilkModalProps> = ({ isOpen, onClose, onS
                     type="submit"
                     className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center space-x-2"
                   >
-                    <span>Save Record</span>
+                    <span>Save</span>
                     <Check size={20} strokeWidth={3} />
                   </button>
               </div>

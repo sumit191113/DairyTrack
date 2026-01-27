@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { MilkRecord, FolderSummary } from '../types';
-import { Folder, ChevronRight, Droplets, Banknote, Edit2, Trash2, ArrowLeft, TrendingUp, AlertTriangle, FileText, CheckCircle2, Clock, CloudUpload } from 'lucide-react';
+import { Folder, ChevronRight, Droplets, Banknote, Edit2, Trash2, ArrowLeft, TrendingUp, AlertTriangle, FileText, CheckCircle2, Clock, CloudUpload, Sun, Moon } from 'lucide-react';
 
 interface RecordListProps {
   records: MilkRecord[];
@@ -106,46 +106,25 @@ export const RecordList: React.FC<RecordListProps> = ({ records, onBack, onEdit,
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar p-6 pb-32">
-            {/* Improved Overall Summary Card */}
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2.5rem] p-6 text-white shadow-xl shadow-blue-200 mb-8 relative overflow-hidden group">
-                {/* Background Decorations */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-white/15 transition-colors"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
-
-                {/* Content */}
-                <div className="relative z-10">
-                    {/* Total Revenue Section */}
-                    <div className="flex items-center space-x-4 mb-6">
-                        <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
-                            <Banknote size={28} className="text-white" />
-                        </div>
-                        <div>
-                            <p className="text-blue-100 font-medium text-sm">Total Earnings</p>
-                            <h3 className="text-3xl font-bold tracking-tight">₹{overallStats.amount.toLocaleString()}</h3>
-                        </div>
+            {/* Extremely Compact Overall Summary Card */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-3xl p-4 text-white shadow-md shadow-blue-100 mb-6">
+                <div className="grid grid-cols-3 gap-2 text-center divide-x divide-blue-400/50">
+                    <div>
+                        <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Total Milk</p>
+                        <p className="font-black text-lg">{overallStats.quantity.toFixed(1)}<span className="text-[10px] ml-0.5 font-bold">L</span></p>
                     </div>
-
-                    {/* Grid for Milk & Entries */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/5 hover:bg-black/30 transition-colors">
-                            <div className="flex items-center space-x-2 mb-1">
-                                <Droplets size={16} className="text-blue-200" />
-                                <span className="text-blue-100 text-xs font-bold uppercase tracking-wider">Total Milk</span>
-                            </div>
-                            <p className="text-xl font-bold">{overallStats.quantity.toFixed(0)} <span className="text-sm opacity-70 font-medium">L</span></p>
-                        </div>
-                        <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/5 hover:bg-black/30 transition-colors">
-                            <div className="flex items-center space-x-2 mb-1">
-                                <FileText size={16} className="text-blue-200" />
-                                 <span className="text-blue-100 text-xs font-bold uppercase tracking-wider">Entries</span>
-                            </div>
-                             <p className="text-xl font-bold">{overallStats.count}</p>
-                        </div>
+                    <div>
+                        <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Earnings</p>
+                        <p className="font-black text-lg">₹{overallStats.amount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                        <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Entries</p>
+                        <p className="font-black text-lg">{overallStats.count}</p>
                     </div>
                 </div>
             </div>
 
-            <h3 className="text-xs font-bold text-gray-400 mb-3 px-1 uppercase tracking-wider">Recent Folders</h3>
+            <h3 className="text-[10px] font-black text-gray-400 mb-3 px-1 uppercase tracking-widest">Recent Folders</h3>
 
             {folders.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
@@ -155,28 +134,29 @@ export const RecordList: React.FC<RecordListProps> = ({ records, onBack, onEdit,
             ) : (
             <div className="space-y-4">
                 {folders.map(folder => (
-                <button 
-                    key={folder.id}
-                    onClick={() => setSelectedFolderId(folder.id)}
-                    className="w-full bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center justify-between active:scale-[0.98] hover:border-blue-200 transition-all cursor-pointer group"
-                >
-                    <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-blue-50 group-hover:bg-blue-100 transition-colors rounded-2xl flex items-center justify-center shrink-0">
-                        <Folder size={28} className="text-blue-600" />
-                    </div>
-                    <div className="flex flex-col text-left">
-                        <span className="font-bold text-gray-800 text-lg">{folder.label}</span>
-                        <span className="text-sm text-gray-500">{folder.records.length} Records</span>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <div className="text-base font-bold text-gray-900">{folder.totalQuantity.toFixed(1)} L</div>
-                            <div className="text-sm font-bold text-green-600">₹{folder.totalAmount.toLocaleString()}</div>
+                <div key={folder.id} className="p-[3.5px] bg-gradient-to-br from-blue-600 via-blue-400 to-indigo-500 rounded-[1.8rem] shadow-lg shadow-blue-50 transition-transform active:scale-[0.98]">
+                    <button 
+                        onClick={() => setSelectedFolderId(folder.id)}
+                        className="w-full bg-white rounded-[1.6rem] p-4 flex items-center justify-between cursor-pointer group"
+                    >
+                        <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-50 group-hover:bg-blue-100 transition-colors rounded-2xl flex items-center justify-center shrink-0">
+                            <Folder size={24} className="text-blue-600" />
                         </div>
-                        <ChevronRight size={24} className="text-gray-300" />
-                    </div>
-                </button>
+                        <div className="flex flex-col text-left">
+                            <span className="font-bold text-gray-800 text-base">{folder.label}</span>
+                            <span className="text-[11px] font-semibold text-gray-400">{folder.records.length} Records</span>
+                        </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <div className="text-sm font-black text-gray-900">{folder.totalQuantity.toFixed(1)} L</div>
+                                <div className="text-[11px] font-black text-green-600">₹{folder.totalAmount.toLocaleString()}</div>
+                            </div>
+                            <ChevronRight size={20} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
+                        </div>
+                    </button>
+                </div>
                 ))}
             </div>
             )}
@@ -193,77 +173,79 @@ export const RecordList: React.FC<RecordListProps> = ({ records, onBack, onEdit,
             <ArrowLeft size={24} className="text-gray-700" />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{selectedFolder?.label}</h2>
-            <p className="text-xs text-gray-500">Folder Details</p>
+            <h2 className="text-xl font-bold text-gray-800 leading-none mb-1">{selectedFolder?.label}</h2>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Production Logs</p>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar p-6 pb-32">
-            {/* Folder Summary Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-[2rem] p-6 text-white shadow-lg shadow-blue-200 mb-8">
-            <div className="grid grid-cols-3 gap-4 text-center divide-x divide-blue-400/50">
+            {/* Compact Folder Summary Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-3xl p-4 text-white shadow-md shadow-blue-100 mb-6">
+            <div className="grid grid-cols-3 gap-2 text-center divide-x divide-blue-400/50">
                 <div>
-                <p className="text-blue-100 text-sm mb-1">Total Milk</p>
-                <p className="font-bold text-xl">{selectedFolder?.totalQuantity.toFixed(1)} L</p>
+                <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Milk</p>
+                <p className="font-black text-lg">{selectedFolder?.totalQuantity.toFixed(1)}<span className="text-[10px] ml-0.5 font-bold">L</span></p>
                 </div>
                 <div>
-                <p className="text-blue-100 text-sm mb-1">Total Amt</p>
-                <p className="font-bold text-xl">₹{selectedFolder?.totalAmount.toLocaleString()}</p>
+                <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Amount</p>
+                <p className="font-black text-lg">₹{selectedFolder?.totalAmount.toLocaleString()}</p>
                 </div>
                 <div>
-                <p className="text-blue-100 text-sm mb-1">Avg Price</p>
-                <p className="font-bold text-xl">₹{selectedFolder?.avgPricePerLiter.toFixed(1)}</p>
+                <p className="text-blue-100 text-[9px] font-black uppercase tracking-wider mb-0.5">Rate</p>
+                <p className="font-black text-lg">₹{selectedFolder?.avgPricePerLiter.toFixed(1)}</p>
                 </div>
             </div>
             </div>
 
-            {/* Record List */}
+            {/* Record List - Compact Design with Blue Gradient Border & No Paid Status */}
             <div className="space-y-4">
             {selectedFolder?.records.map((record) => (
-                <div key={record.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                         <span className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-sm font-bold">
-                            {new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                        </span>
-                        {record.pendingSync && (
-                            <span className="bg-orange-50 text-orange-600 px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center">
-                                <CloudUpload size={10} className="mr-1" /> Pending
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex space-x-3">
-                    <button onClick={() => onEdit(record)} className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-colors">
-                        <Edit2 size={20} />
-                    </button>
-                    <button onClick={() => setDeleteId(record.id)} className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors">
-                        <Trash2 size={20} />
-                    </button>
-                    </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-50 rounded-full">
-                        <Droplets className="text-blue-500" size={24} />
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold text-gray-700">{record.quantity} Liters</p>
-                        <p className="text-sm text-gray-400">@ ₹{record.pricePerLiter}/L</p>
-                    </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                        <div className="flex items-center space-x-1.5 text-green-600">
-                            <Banknote size={20} />
-                            <span className="font-bold text-lg">₹{record.totalPrice}</span>
-                        </div>
-                        {/* Status Badge */}
-                        <div className={`mt-1 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${record.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                             {record.status === 'PAID' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
-                             {record.status === 'PAID' ? 'Paid' : 'Unpaid'}
-                        </div>
-                    </div>
-                </div>
+                <div key={record.id} className="p-[3px] bg-gradient-to-br from-blue-600 via-blue-400 to-indigo-500 rounded-3xl shadow-lg shadow-blue-50 group">
+                  <div className="bg-white rounded-[1.3rem] p-3 flex flex-col">
+                      <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                               <span className="bg-gray-50 text-gray-600 px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-gray-100">
+                                  {record.shift === 'DAY' ? <Sun size={12} className="text-orange-500 fill-orange-500/10" /> : <Moon size={12} className="text-indigo-500 fill-indigo-500/10" />}
+                                  {new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                              </span>
+                              {record.pendingSync && (
+                                  <span className="bg-orange-50 text-orange-600 px-1.5 py-1 rounded-md text-[9px] font-bold flex items-center tracking-tighter uppercase">
+                                      <CloudUpload size={10} className="mr-0.5" /> Sync
+                                  </span>
+                              )}
+                          </div>
+                          <div className="flex space-x-1">
+                              <button onClick={() => onEdit(record)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors active:scale-90">
+                                  <Edit2 size={14} />
+                              </button>
+                              <button onClick={() => setDeleteId(record.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors active:scale-90">
+                                  <Trash2 size={14} />
+                              </button>
+                          </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between px-1">
+                          <div className="flex items-center space-x-2.5">
+                              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 border border-blue-100/30">
+                                  <Droplets className="text-blue-500" size={16} />
+                              </div>
+                              <div>
+                                  <div className="flex items-baseline gap-0.5">
+                                      <p className="text-base font-black text-gray-800 leading-none">{record.quantity}</p>
+                                      <p className="text-[9px] font-bold text-gray-400 uppercase">L</p>
+                                  </div>
+                                  <p className="text-[10px] font-semibold text-gray-400">₹{record.pricePerLiter}/L</p>
+                              </div>
+                          </div>
+
+                          <div className="text-right flex flex-col items-end">
+                              <div className="flex items-center space-x-1 text-green-600">
+                                  <Banknote size={14} />
+                                  <span className="font-black text-lg tracking-tight">₹{record.totalPrice}</span>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
                 </div>
             ))}
             </div>

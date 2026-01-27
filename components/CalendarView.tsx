@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Droplets, Banknote, Calendar as CalendarIcon, Edit2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Droplets, Banknote, Calendar as CalendarIcon, Edit2, Sun, Moon } from 'lucide-react';
 import { MilkRecord } from '../types';
 
 interface CalendarViewProps {
@@ -138,37 +138,38 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onBack, records, onE
                              <Droplets size={20} className="text-blue-500" />
                         </div>
                         <span className="text-xl font-bold text-gray-800 leading-none">{selectedDayTotal.toFixed(2)}L</span>
-                        <span className="text-xs text-gray-400 font-bold uppercase mt-1">Total Milk</span>
+                        <span className="text-xs text-gray-400 font-bold uppercase mt-1 text-center">Milk</span>
                     </div>
                     <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
                         <div className="bg-green-50 p-2.5 rounded-full mb-2">
                              <Banknote size={20} className="text-green-500" />
                         </div>
-                        <span className="text-xl font-bold text-gray-800 leading-none">₹{selectedDayAmount.toFixed(2)}</span>
-                        <span className="text-xs text-gray-400 font-bold uppercase mt-1">Amount</span>
+                        <span className="text-xl font-bold text-gray-800 leading-none">₹{selectedDayAmount.toFixed(0)}</span>
+                        <span className="text-xs text-gray-400 font-bold uppercase mt-1 text-center">Amount</span>
                     </div>
                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
                          <div className="bg-orange-50 p-2.5 rounded-full mb-2">
-                             <span className="text-sm font-bold text-orange-500">Avg</span>
+                             <span className="text-sm font-bold text-orange-500">Rate</span>
                         </div>
                         <span className="text-xl font-bold text-gray-800 leading-none">₹{selectedDayPrice}</span>
-                        <span className="text-xs text-gray-400 font-bold uppercase mt-1">Rate / L</span>
+                        <span className="text-xs text-gray-400 font-bold uppercase mt-1 text-center">Avg/L</span>
                     </div>
                 </div>
 
                 {/* Records List */}
                 <div className="space-y-4">
                     {selectedRecords.map(record => (
-                        <div key={record.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center hover:border-blue-200 transition-colors">
+                        <div key={record.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex justify-between items-center hover:border-blue-200 transition-colors relative overflow-hidden">
                             <div className="flex flex-col">
-                                <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-3 mb-1">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-lg">
+                                        {record.shift === 'DAY' ? <Sun size={14} className="text-orange-500" /> : <Moon size={14} className="text-indigo-500" />}
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">{record.shift || 'Day'}</span>
+                                    </div>
                                     <span className="font-bold text-gray-800 text-xl">{record.quantity} L</span>
-                                    <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-1 rounded-md">
-                                        @ ₹{record.pricePerLiter}
-                                    </span>
                                 </div>
-                                <span className="text-sm font-semibold text-blue-600 mt-1">
-                                    Total: ₹{record.totalPrice}
+                                <span className="text-sm font-semibold text-blue-600">
+                                    Total: ₹{record.totalPrice} (@ ₹{record.pricePerLiter})
                                 </span>
                             </div>
                             <button 

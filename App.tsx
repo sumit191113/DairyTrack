@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -13,6 +14,7 @@ import { TrashView } from './components/TrashView';
 import { ProfileView } from './components/ProfileView';
 import { Sidebar } from './components/Sidebar';
 import { ReminderModal } from './components/ReminderModal';
+import { FloatingCalculator } from './components/FloatingCalculator';
 import { AppView, MilkRecord, Note } from './types';
 import { subscribeToRecords, addRecord, updateRecord, softDeleteRecord, subscribeToNotes } from './services/firebase';
 import { Lock } from 'lucide-react';
@@ -24,8 +26,13 @@ const App: React.FC = () => {
   const [records, setRecords] = useState<MilkRecord[]>([]);
   const [editingRecord, setEditingRecord] = useState<MilkRecord | undefined>(undefined);
   
+  // Floating Calculator State
+  const [isFloatingCalcOpen, setIsFloatingCalcOpen] = useState(false);
+  const [calcDisplay, setCalcDisplay] = useState('0');
+
   // Notes & Reminder State
   const [notes, setNotes] = useState<Note[]>([]);
+  const [reminderNotes, setReminderNotes] = useState<Note[]>([]);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
   const hasShownRemindersRef = useRef(false);
 
@@ -35,19 +42,17 @@ const App: React.FC = () => {
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
 
-  // Check App Lock on Load and Enforce Default "1911"
+  // Check App Lock on Load
   useEffect(() => {
     const settingsStr = localStorage.getItem('dairyTrackSettings');
     let settings = {
         soundsEnabled: true,
         alertsEnabled: true,
-        appLockPin: '1911' // Default Password
+        appLockPin: '1911'
     };
 
     if (settingsStr) {
       const parsed = JSON.parse(settingsStr);
-      
-      // If settings exist but appLockPin is undefined (legacy or first time with new feature), set default
       if (parsed.appLockPin === undefined) {
          parsed.appLockPin = '1911';
          localStorage.setItem('dairyTrackSettings', JSON.stringify({ ...parsed, appLockPin: '1911' }));
@@ -56,18 +61,15 @@ const App: React.FC = () => {
          settings = parsed;
       }
     } else {
-      // First time app load ever
       localStorage.setItem('dairyTrackSettings', JSON.stringify(settings));
     }
 
-    // Apply Lock if a PIN is set (which is true by default now)
     if (settings.appLockPin) {
       setLockPin(settings.appLockPin);
       setIsLocked(true);
     }
   }, []);
 
-  // Sync Milk Records
   useEffect(() => {
     const unsubscribe = subscribeToRecords((updatedRecords) => {
       setRecords(updatedRecords);
@@ -75,18 +77,15 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Sync Notes & Trigger Reminder
   useEffect(() => {
     const unsubscribe = subscribeToNotes((updatedNotes) => {
       setNotes(updatedNotes);
-      
-      // Show reminder only on initial load if notes exist AND haven't been permanently dismissed
-      if (!hasShownRemindersRef.current && updatedNotes.length > 0) {
-        const latestNote = updatedNotes[0]; // Assuming sorted desc
+      const activeReminders = updatedNotes.filter(n => n.remindMe === true);
+      setReminderNotes(activeReminders);
+      if (!hasShownRemindersRef.current && activeReminders.length > 0) {
+        const latestReminder = activeReminders[0];
         const lastDismissedTimestamp = parseInt(localStorage.getItem('dairy_last_dismissed_note') || '0');
-        
-        // Only show if the latest note is newer than what was last dismissed
-        if (latestNote.timestamp > lastDismissedTimestamp) {
+        if (latestReminder.timestamp > lastDismissedTimestamp) {
             setIsReminderOpen(true);
             hasShownRemindersRef.current = true;
         }
@@ -134,10 +133,8 @@ const App: React.FC = () => {
   };
 
   const handleDismissReminder = () => {
-    if (notes.length > 0) {
-        // Store the timestamp of the newest note
-        // notes are already sorted desc by subscribeToNotes
-        localStorage.setItem('dairy_last_dismissed_note', notes[0].timestamp.toString());
+    if (reminderNotes.length > 0) {
+        localStorage.setItem('dairy_last_dismissed_note', reminderNotes[0].timestamp.toString());
     }
     setIsReminderOpen(false);
   };
@@ -145,7 +142,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case AppView.HOME:
-        return <Dashboard onAddMilk={handleAddClick} onChangeView={setCurrentView} />;
+        return <Dashboard onAddMilk={handleAddClick} onChangeView={setCurrentView} records={records} />;
       case AppView.HISTORY:
         return (
           <RecordList 
@@ -168,7 +165,17 @@ const App: React.FC = () => {
           />
         );
       case AppView.CALCULATOR:
-        return <CalculatorView onBack={() => setCurrentView(AppView.HOME)} />;
+        return (
+          <CalculatorView 
+            onBack={() => setCurrentView(AppView.HOME)} 
+            initialValue={calcDisplay}
+            onValueChange={setCalcDisplay}
+            onMinimize={() => {
+              setIsFloatingCalcOpen(true);
+              setCurrentView(AppView.HOME);
+            }}
+          />
+        );
       case AppView.MANAGE:
         return <ManageView records={records} onBack={() => setCurrentView(AppView.HOME)} />;
       case AppView.SETTINGS:
@@ -178,26 +185,22 @@ const App: React.FC = () => {
       case AppView.PROFILE:
         return <ProfileView onBack={() => setCurrentView(AppView.HOME)} />;
       default:
-        return <Dashboard onAddMilk={handleAddClick} onChangeView={setCurrentView} />;
+        return <Dashboard onAddMilk={handleAddClick} onChangeView={setCurrentView} records={records} />;
     }
   };
 
   const showGlobalHeader = currentView === AppView.HOME;
 
-  // App Lock Overlay
   if (isLocked) {
     return (
       <div className="h-[100dvh] w-full bg-blue-600 flex flex-col items-center justify-center p-6 text-white relative overflow-hidden animate-in fade-in duration-300">
         <div className="absolute top-[-100px] right-[-100px] w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-[-50px] left-[-50px] w-60 h-60 bg-white/10 rounded-full blur-3xl"></div>
-        
         <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mb-8 shadow-xl border border-white/20">
             <Lock size={48} className="text-white" />
         </div>
-        
         <h1 className="text-3xl font-bold mb-2">DairyTrack Locked</h1>
         <p className="text-blue-100 mb-8 opacity-90">Enter PIN to access your records</p>
-
         <form onSubmit={handleUnlock} className="w-full max-w-xs flex flex-col items-center">
             <input 
               type="password" 
@@ -214,7 +217,6 @@ const App: React.FC = () => {
               autoFocus
             />
             {pinError && <p className="text-white bg-red-500/80 px-4 py-2 rounded-lg text-sm font-bold mt-4 animate-bounce">Incorrect PIN. Try again.</p>}
-            
             <button type="submit" className="w-full mt-8 bg-white text-blue-600 py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-transform hover:bg-blue-50">
                 Unlock App
             </button>
@@ -255,10 +257,22 @@ const App: React.FC = () => {
 
       <ReminderModal 
         isOpen={isReminderOpen}
-        onClose={() => setIsReminderOpen(false)} // Close temporarily
-        onDismiss={handleDismissReminder} // Close permanently
-        notes={notes}
+        onClose={() => setIsReminderOpen(false)}
+        onDismiss={handleDismissReminder}
+        notes={reminderNotes}
       />
+
+      {isFloatingCalcOpen && (
+        <FloatingCalculator 
+          initialValue={calcDisplay}
+          onClose={() => setIsFloatingCalcOpen(false)}
+          onExpand={() => {
+            setIsFloatingCalcOpen(false);
+            setCurrentView(AppView.CALCULATOR);
+          }}
+          onValueChange={setCalcDisplay}
+        />
+      )}
     </div>
   );
 };

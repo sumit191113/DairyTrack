@@ -1,3 +1,4 @@
+
 export interface MilkRecord {
   id: string;
   date: string; // ISO String YYYY-MM-DD
@@ -5,6 +6,7 @@ export interface MilkRecord {
   totalPrice: number;
   pricePerLiter: number;
   timestamp: number;
+  shift?: 'DAY' | 'NIGHT'; // Added shift field
   status?: 'PAID' | 'UNPAID';
   pendingSync?: boolean; // New: True if waiting to upload
 }
@@ -15,6 +17,7 @@ export interface Note {
   content: string;
   date: string;
   timestamp: number;
+  remindMe?: boolean; // New: True if user wants a reminder for this note
   pendingSync?: boolean; // New: True if waiting to upload
 }
 

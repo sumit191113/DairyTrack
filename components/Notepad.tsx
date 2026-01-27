@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Search, Trash2, Save, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Save, ChevronLeft, Bell, BellOff } from 'lucide-react';
 import { Note } from '../types';
 import { subscribeToNotes, addNote, updateNote, deleteNote } from '../services/firebase';
 
@@ -26,7 +27,8 @@ export const Notepad: React.FC<NotepadProps> = ({ onBack }) => {
       title: '',
       content: '',
       date: new Date().toISOString().split('T')[0],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      remindMe: false
     });
     setView('EDITOR');
   };
@@ -46,11 +48,12 @@ export const Notepad: React.FC<NotepadProps> = ({ onBack }) => {
       title: currentNote.title || 'Untitled Note',
       content: currentNote.content || '',
       date: currentNote.date || new Date().toISOString().split('T')[0],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      remindMe: !!currentNote.remindMe
     };
 
     if (currentNote.id) {
-      await updateNote({ ...noteData, id: currentNote.id });
+      await updateNote({ ...noteData, id: currentNote.id } as Note);
     } else {
       await addNote(noteData);
     }
@@ -116,14 +119,23 @@ export const Notepad: React.FC<NotepadProps> = ({ onBack }) => {
           <button onClick={() => setView('LIST')} className="p-3 bg-gray-100 rounded-2xl hover:bg-gray-200 text-gray-700 shadow-sm active:scale-90 transition-all">
              <ChevronLeft size={28} />
           </button>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            {/* Remind Me Toggle */}
+            <button 
+                onClick={() => setCurrentNote({...currentNote, remindMe: !currentNote.remindMe})}
+                className={`p-3 rounded-2xl transition-all active:scale-90 flex items-center gap-2 font-bold text-sm ${currentNote.remindMe ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}
+            >
+                {currentNote.remindMe ? <Bell size={20} /> : <BellOff size={20} />}
+                <span className="hidden sm:inline">Remind Me</span>
+            </button>
+            
             {currentNote.id && (
                <button onClick={(e) => promptDelete(currentNote.id!, e)} className="p-3 text-red-500 bg-red-50 rounded-2xl hover:bg-red-100 active:scale-90 transition-transform">
                 <Trash2 size={24} />
               </button>
             )}
             <button onClick={handleSave} className="px-6 py-3 bg-blue-600 text-white text-base font-bold rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-transform">
-              Save Note
+              Save
             </button>
           </div>
         </div>
@@ -189,7 +201,10 @@ export const Notepad: React.FC<NotepadProps> = ({ onBack }) => {
               className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 active:scale-[0.99] transition-transform relative group"
             >
               <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-xl text-gray-800 line-clamp-1 pr-10">{note.title}</h3>
+                  <div className="flex items-center gap-2 pr-10">
+                      <h3 className="font-bold text-xl text-gray-800 line-clamp-1">{note.title}</h3>
+                      {note.remindMe && <Bell size={14} className="text-blue-500 fill-blue-500/10 shrink-0" />}
+                  </div>
                   <button 
                     onClick={(e) => promptDelete(note.id, e)}
                     className="p-2 -mr-2 -mt-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors absolute right-4 top-4"
