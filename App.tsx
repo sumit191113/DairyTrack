@@ -28,7 +28,6 @@ import {
   syncAllPendingData
 } from './services/firebase';
 import { User } from 'firebase/auth';
-import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -151,26 +150,22 @@ const App: React.FC = () => {
     }
   };
 
-  // 1. Loading from Firebase
-  if (authLoading) {
-    return (
-      <div className="h-[100dvh] w-full bg-blue-600 flex items-center justify-center">
-        <Loader2 className="text-white animate-spin" size={48} />
-      </div>
-    );
-  }
-
-  // 2. Auth Guard
-  if (!user) {
+  // 1. Auth Guard (Wait until status is determined, but show Login UI immediately if null)
+  if (!user && !authLoading) {
     return <AuthView />;
   }
 
-  // 3. Security Guard (App Lock)
-  if (activePin && !isUnlocked) {
+  // If still loading and no user yet, return null or an empty div to avoid flicker
+  if (authLoading && !user) {
+    return <div className="h-screen w-full bg-white" />;
+  }
+
+  // 2. Security Guard (App Lock)
+  if (user && activePin && !isUnlocked) {
     return <AppLock savedPin={activePin} onUnlock={() => setIsUnlocked(true)} />;
   }
 
-  // 4. Main Application
+  // 3. Main Application
   return (
     <div className="h-[100dvh] w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden relative">
       {currentView === AppView.HOME && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
@@ -187,7 +182,7 @@ const App: React.FC = () => {
         onChangeView={setCurrentView}
         onAddClick={handleAddClick}
         currentView={currentView}
-        user={user}
+        user={user!}
       />
 
       <AddMilkModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveRecord} existingRecord={editingRecord} />
