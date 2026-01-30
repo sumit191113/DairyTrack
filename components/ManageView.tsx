@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { MilkRecord } from '../types';
 import { Filter, TrendingUp, Droplets, Banknote, Calendar, ArrowUpRight, ArrowDownRight, ArrowLeft, AlertCircle, FileText, CheckCircle2, CircleDollarSign, ChevronLeft, Receipt, ChevronRight, XCircle, Undo2, ChevronDown, Check, Trophy, TrendingDown, Sun, Moon } from 'lucide-react';
-import { markRecordsAsPaid, updateRecord } from '../services/firebase';
+// Changed import to use updateRecordsStatus instead of markRecordsAsPaid
+import { updateRecordsStatus, updateRecord } from '../services/firebase';
 
 interface ManageViewProps {
   records: MilkRecord[];
@@ -96,7 +97,8 @@ export const ManageView: React.FC<ManageViewProps> = ({ records, onBack }) => {
   const handleMarkAsPaid = async () => {
     const unpaidRecords = currentInvoice.records.filter(r => r.status !== 'PAID');
     const ids = unpaidRecords.map(r => r.id);
-    if (ids.length > 0) await markRecordsAsPaid(ids);
+    // Fixed call to use updateRecordsStatus
+    if (ids.length > 0) await updateRecordsStatus(ids, 'PAID');
     setShowPaymentConfirm(false);
   };
 

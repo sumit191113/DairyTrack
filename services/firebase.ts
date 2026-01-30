@@ -1,386 +1,281 @@
+
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, remove, update, get } from 'firebase/database';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  User
+} from 'firebase/auth';
 import { MilkRecord, Note } from '../types';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyALCuAEfJjgmxeip41Dji6HUEKIosi0Aik",
-  authDomain: "milkrecordapp.firebaseapp.com",
-  databaseURL: "https://milkrecordapp-default-rtdb.firebaseio.com",
-  projectId: "milkrecordapp",
-  storageBucket: "milkrecordapp.firebasestorage.app",
-  messagingSenderId: "797212369388",
-  appId: "1:797212369388:web:5e082b93ad9e23bbf3a0c9"
+  apiKey: "AIzaSyAKOyQ-bm0RN6dllgWRsa3Zi8veUvqu548",
+  authDomain: "milkrecord-bc81a.firebaseapp.com",
+  databaseURL: "https://milkrecord-bc81a-default-rtdb.firebaseio.com",
+  projectId: "milkrecord-bc81a",
+  storageBucket: "milkrecord-bc81a.firebasestorage.app",
+  messagingSenderId: "833623159257",
+  appId: "1:833623159257:web:94c90cb5f0fef6d4d269c8",
+  measurementId: "G-WTVFES3PS3"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
-const SHARED_NAMESPACE = 'shared_farm_data';
+let currentUid: string | null = null;
+
 const LOCAL_STORAGE_KEY_RECORDS = 'dairy_pending_records';
 const LOCAL_STORAGE_KEY_NOTES = 'dairy_pending_notes';
 const LOCAL_STORAGE_KEY_DELETED = 'dairy_pending_deleted';
 
-// --- Helpers ---
+// --- Auth Functions ---
 
-// Generate a unique ID locally (Timestamp + Random) to ensure no collision during offline creation
-const generateId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+export const signUp = (email: string, pass: string) => createUserWithEmailAndPassword(auth, email, pass);
+export const signIn = (email: string, pass: string) => signInWithEmailAndPassword(auth, email, pass);
+export const logOut = () => signOut(auth);
+export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);
+
+export const subscribeToAuth = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, (user) => {
+    currentUid = user ? user.uid : null;
+    callback(user);
+  });
 };
 
-// Check if online
+// --- Helpers ---
+const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 const isOnline = () => navigator.onLine;
-
-// --- Local Storage Helpers ---
 
 const getLocalPending = <T>(key: string): T[] => {
   try {
-    const item = localStorage.getItem(key);
+    const item = localStorage.getItem(`${currentUid}_${key}`);
     return item ? JSON.parse(item) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 };
 
 const setLocalPending = <T>(key: string, data: T[]) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-// --- State & Notification Logic ---
-
-const recordListeners: ((records: MilkRecord[]) => void)[] = [];
-let cachedServerRecords: MilkRecord[] = [];
-
-const noteListeners: ((notes: Note[]) => void)[] = [];
-let cachedServerNotes: Note[] = [];
-
-// Notify Record Subscribers (Merges Server + Pending)
-const notifyRecordListeners = () => {
-  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-  
-  // Merge Strategy: Pending records override server records with same ID
-  const recordMap = new Map<string, MilkRecord>();
-  
-  // 1. Populate with server data
-  cachedServerRecords.forEach(r => recordMap.set(r.id, r));
-  
-  // 2. Overlay pending data
-  pending.forEach(r => recordMap.set(r.id, r));
-
-  const combined = Array.from(recordMap.values());
-  
-  // Sort by Date Descending
-  combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
-  recordListeners.forEach(cb => cb(combined));
-};
-
-// Notify Note Subscribers (Merges Server + Pending)
-const notifyNoteListeners = () => {
-  const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
-  const noteMap = new Map<string, Note>();
-  
-  cachedServerNotes.forEach(n => noteMap.set(n.id, n));
-  pending.forEach(n => noteMap.set(n.id, n));
-
-  const combined = Array.from(noteMap.values());
-  // Sort by Timestamp Descending
-  combined.sort((a, b) => b.timestamp - a.timestamp);
-  
-  noteListeners.forEach(cb => cb(combined));
+  localStorage.setItem(`${currentUid}_${key}`, JSON.stringify(data));
 };
 
 // --- Synchronization Logic ---
 
-// Generic Sync Function
 export const syncAllPendingData = async () => {
-  if (!isOnline()) return;
+  if (!isOnline() || !currentUid) return;
 
-  // 1. Sync Records
+  const uid = currentUid;
+
+  // 1. Records
   const pendingRecords = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
   if (pendingRecords.length > 0) {
-    const remainingRecords: MilkRecord[] = [];
-    
+    const remaining: MilkRecord[] = [];
     for (const record of pendingRecords) {
       try {
-        // Use SET instead of PUSH with the local ID to ensure idempotency (no duplicates)
-        const recordRef = ref(db, `milkRecords/${SHARED_NAMESPACE}/${record.id}`);
-        const { pendingSync, ...cleanRecord } = record;
-        await set(recordRef, cleanRecord);
-      } catch (e) {
-        console.error("Failed to sync record", record.id, e);
-        remainingRecords.push(record); // Keep in queue if failed
-      }
+        const recordRef = ref(db, `milkData/${uid}/milkRecords/${record.id}`);
+        const { pendingSync, ...clean } = record;
+        await set(recordRef, clean);
+      } catch { remaining.push(record); }
     }
-    setLocalPending(LOCAL_STORAGE_KEY_RECORDS, remainingRecords);
-    notifyRecordListeners(); // Refresh UI to remove 'pending' status
+    setLocalPending(LOCAL_STORAGE_KEY_RECORDS, remaining);
+    notifyRecordListeners();
   }
 
-  // 2. Sync Notes
+  // 2. Notes
   const pendingNotes = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
   if (pendingNotes.length > 0) {
-    const remainingNotes: Note[] = [];
+    const remaining: Note[] = [];
     for (const note of pendingNotes) {
       try {
-        const noteRef = ref(db, `notes/${SHARED_NAMESPACE}/${note.id}`);
-        const { pendingSync, ...cleanNote } = note;
-        await set(noteRef, cleanNote);
-      } catch (e) {
-        remainingNotes.push(note);
-      }
+        const noteRef = ref(db, `milkData/${uid}/notes/${note.id}`);
+        const { pendingSync, ...clean } = note;
+        await set(noteRef, clean);
+      } catch { remaining.push(note); }
     }
-    setLocalPending(LOCAL_STORAGE_KEY_NOTES, remainingNotes);
-    notifyNoteListeners(); // Refresh UI to remove 'pending' status
+    setLocalPending(LOCAL_STORAGE_KEY_NOTES, remaining);
+    notifyNoteListeners();
   }
 
-  // 3. Sync Deletions (Soft Deletes / Moves)
-  const pendingDeletions = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
-  if (pendingDeletions.length > 0) {
-    const remainingDeletions: typeof pendingDeletions = [];
-    for (const item of pendingDeletions) {
-        try {
-            const refToDelete = ref(db, item.path);
-            await remove(refToDelete);
-        } catch (e) {
-            remainingDeletions.push(item);
-        }
+  // 3. Deletions
+  const pendingDeletes = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
+  if (pendingDeletes.length > 0) {
+    const remaining: any[] = [];
+    for (const item of pendingDeletes) {
+        try { await remove(ref(db, item.path)); } catch { remaining.push(item); }
     }
-    setLocalPending(LOCAL_STORAGE_KEY_DELETED, remainingDeletions);
+    setLocalPending(LOCAL_STORAGE_KEY_DELETED, remaining);
   }
 };
 
-// Auto-sync listeners
 window.addEventListener('online', syncAllPendingData);
-// Initial sync attempt on load
-setTimeout(syncAllPendingData, 2000);
 
+// --- Subscriptions ---
 
-// --- Milk Records Manager ---
+const recordListeners: ((records: MilkRecord[]) => void)[] = [];
+let cachedServerRecords: MilkRecord[] = [];
+
+const notifyRecordListeners = () => {
+  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
+  const recordMap = new Map<string, MilkRecord>();
+  cachedServerRecords.forEach(r => recordMap.set(r.id, r));
+  pending.forEach(r => recordMap.set(r.id, r));
+  const combined = Array.from(recordMap.values());
+  combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  recordListeners.forEach(cb => cb(combined));
+};
 
 export const subscribeToRecords = (callback: (records: MilkRecord[]) => void) => {
+  if (!currentUid) return () => {};
   recordListeners.push(callback);
-  
-  // Listen to Firebase
-  const recordsRef = ref(db, `milkRecords/${SHARED_NAMESPACE}`);
+  const recordsRef = ref(db, `milkData/${currentUid}/milkRecords`);
   const unsubscribe = onValue(recordsRef, (snapshot) => {
     const data = snapshot.val();
-    const loadedRecords: MilkRecord[] = [];
-    if (data) {
-      Object.keys(data).forEach((key) => {
-        loadedRecords.push({ id: key, ...data[key] });
-      });
-    }
-    cachedServerRecords = loadedRecords;
-    notifyRecordListeners(); // Merge and notify
+    cachedServerRecords = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+    notifyRecordListeners();
   });
-
-  // Initial notify with whatever local data we have
   notifyRecordListeners();
-
   return () => {
-      const index = recordListeners.indexOf(callback);
-      if (index > -1) recordListeners.splice(index, 1);
-      unsubscribe();
+    recordListeners.splice(recordListeners.indexOf(callback), 1);
+    unsubscribe();
   };
 };
 
-export const addRecord = async (recordData: Omit<MilkRecord, 'id'>) => {
-  // 1. Generate Local ID
-  const newId = generateId();
-  const newRecord: MilkRecord = { 
-      ...recordData, 
-      id: newId, 
-      pendingSync: true 
-  };
+const noteListeners: ((notes: Note[]) => void)[] = [];
+let cachedServerNotes: Note[] = [];
 
-  // 2. Save to Local Pending
+const notifyNoteListeners = () => {
+  const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
+  const noteMap = new Map<string, Note>();
+  cachedServerNotes.forEach(n => noteMap.set(n.id, n));
+  pending.forEach(n => noteMap.set(n.id, n));
+  const combined = Array.from(noteMap.values());
+  combined.sort((a, b) => b.timestamp - a.timestamp);
+  noteListeners.forEach(cb => cb(combined));
+};
+
+export const subscribeToNotes = (callback: (notes: Note[]) => void) => {
+  if (!currentUid) return () => {};
+  noteListeners.push(callback);
+  const notesRef = ref(db, `milkData/${currentUid}/notes`);
+  const unsubscribe = onValue(notesRef, (snapshot) => {
+    const data = snapshot.val();
+    cachedServerNotes = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+    notifyNoteListeners();
+  });
+  notifyNoteListeners();
+  return () => {
+    noteListeners.splice(noteListeners.indexOf(callback), 1);
+    unsubscribe();
+  };
+};
+
+// --- Mutations ---
+
+export const addRecord = async (recordData: Omit<MilkRecord, 'id'>) => {
+  const newId = generateId();
+  const newRecord: MilkRecord = { ...recordData, id: newId, pendingSync: true };
   const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
   pending.push(newRecord);
   setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pending);
-
-  // 3. Update UI Immediately
-  notifyRecordListeners();
-
-  // 4. Try Sync
-  if (isOnline()) {
-      syncAllPendingData();
-  }
-};
-
-export const updateRecord = async (record: MilkRecord) => {
-  // Logic: treat update like an overwrite. 
-  // If it's pending, update in pending. If it's server, add to pending with same ID.
-  
-  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-  const index = pending.findIndex(r => r.id === record.id);
-  
-  if (index >= 0) {
-      // Update existing pending
-      pending[index] = { ...record, pendingSync: true };
-      setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pending);
-  } else {
-      // Add to pending to overwrite server
-      pending.push({ ...record, pendingSync: true });
-      setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pending);
-  }
-
   notifyRecordListeners();
   if (isOnline()) syncAllPendingData();
 };
 
-export const markRecordsAsPaid = async (recordIds: string[]) => {
-    // Treat as bulk update
-    const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-    const updates: MilkRecord[] = [];
+export const updateRecord = async (record: MilkRecord) => {
+  const pending = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
+  const idx = pending.findIndex(r => r.id === record.id);
+  if (idx >= 0) pending[idx] = { ...record, pendingSync: true };
+  else pending.push({ ...record, pendingSync: true });
+  setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pending);
+  notifyRecordListeners();
+  if (isOnline()) syncAllPendingData();
+};
 
-    recordIds.forEach(id => {
-        // Find current version (pending prefers)
-        const currentPending = pending.find(r => r.id === id);
-        const currentServer = cachedServerRecords.find(r => r.id === id);
-        const base = currentPending || currentServer;
-
-        if (base) {
-            updates.push({ ...base, status: 'PAID' as const });
-        }
-    });
-
-    for (const u of updates) {
-        await updateRecord(u);
-    }
+export const updateRecordsStatus = async (ids: string[], status: 'PAID' | 'UNPAID') => {
+  for (const id of ids) {
+    const base = cachedServerRecords.find(r => r.id === id) || getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS).find(r => r.id === id);
+    if (base) await updateRecord({ ...base, status });
+  }
 };
 
 export const softDeleteRecord = async (record: MilkRecord) => {
-  // 1. Queue removal from main list (Deletion Queue)
-  const pendingDeletions = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
-  pendingDeletions.push({ id: record.id, path: `milkRecords/${SHARED_NAMESPACE}/${record.id}` });
-  setLocalPending(LOCAL_STORAGE_KEY_DELETED, pendingDeletions);
+  if (!currentUid) return;
+  const uid = currentUid;
+  const pendingDeletes = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
+  pendingDeletes.push({ id: record.id, path: `milkData/${uid}/milkRecords/${record.id}` });
+  setLocalPending(LOCAL_STORAGE_KEY_DELETED, pendingDeletes);
 
-  // 2. Remove from pending records if it exists there (stop it from syncing back)
-  let pendingRecords = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
-  pendingRecords = pendingRecords.filter(r => r.id !== record.id);
-  setLocalPending(LOCAL_STORAGE_KEY_RECORDS, pendingRecords);
+  let records = getLocalPending<MilkRecord>(LOCAL_STORAGE_KEY_RECORDS);
+  setLocalPending(LOCAL_STORAGE_KEY_RECORDS, records.filter(r => r.id !== record.id));
 
-  // 3. Optimistic UI Update: Hide from cache temporarily until server confirms deletion
   cachedServerRecords = cachedServerRecords.filter(r => r.id !== record.id);
   notifyRecordListeners();
-  
-  // 4. If online, do the actual swap immediately for better UX
+
   if (isOnline()) {
-      const deletedRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}/${record.id}`);
-      await set(deletedRef, { ...record, deletedAt: Date.now() });
-      const originalRef = ref(db, `milkRecords/${SHARED_NAMESPACE}/${record.id}`);
-      await remove(originalRef);
-  } else {
-      // Offline fallback: The deletion queue handles removal from main list.
-      // Ideally we should also queue adding to trash, but for simplicity we rely on main list removal.
+    await set(ref(db, `milkData/${uid}/trash/${record.id}`), { ...record, deletedAt: Date.now() });
+    await remove(ref(db, `milkData/${uid}/milkRecords/${record.id}`));
   }
 };
 
 export const subscribeToTrash = (callback: (records: (MilkRecord & { deletedAt: number })[]) => void) => {
-  const trashRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}`);
+  if (!currentUid) return () => {};
+  const trashRef = ref(db, `milkData/${currentUid}/trash`);
   return onValue(trashRef, (snapshot) => {
     const data = snapshot.val();
-    const loadedRecords: (MilkRecord & { deletedAt: number })[] = [];
-    if (data) {
-      Object.keys(data).forEach((key) => {
-        loadedRecords.push({ id: key, ...data[key] });
-      });
-    }
-    loadedRecords.sort((a, b) => b.deletedAt - a.deletedAt);
-    callback(loadedRecords);
+    const loaded = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+    loaded.sort((a, b) => b.deletedAt - a.deletedAt);
+    callback(loaded);
   });
 };
 
-export const permanentDeleteRecord = async (recordId: string) => {
-    if (isOnline()) {
-        const recordRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}/${recordId}`);
-        await remove(recordRef);
-    }
+export const permanentDeleteRecord = async (id: string) => {
+  if (isOnline() && currentUid) await remove(ref(db, `milkData/${currentUid}/trash/${id}`));
 };
 
 export const restoreRecord = async (record: MilkRecord) => {
-    if (isOnline()) {
-        const activeRef = ref(db, `milkRecords/${SHARED_NAMESPACE}/${record.id}`);
-        const { id, ...data } = record as any;
-        delete data.deletedAt;
-        await set(activeRef, data);
-        const trashRef = ref(db, `deletedRecords/${SHARED_NAMESPACE}/${record.id}`);
-        await remove(trashRef);
-    }
+  if (isOnline() && currentUid) {
+    const { id, ...data } = record as any;
+    delete data.deletedAt;
+    await set(ref(db, `milkData/${currentUid}/milkRecords/${record.id}`), data);
+    await remove(ref(db, `milkData/${currentUid}/trash/${record.id}`));
+  }
 };
 
-
-// --- Notes Manager (Offline First) ---
-
-export const subscribeToNotes = (callback: (notes: Note[]) => void) => {
-  noteListeners.push(callback);
-  
-  const notesRef = ref(db, `notes/${SHARED_NAMESPACE}`);
-  const unsubscribe = onValue(notesRef, (snapshot) => {
-    const data = snapshot.val();
-    const loadedNotes: Note[] = [];
-    if (data) {
-      Object.keys(data).forEach((key) => {
-        loadedNotes.push({ id: key, ...data[key] });
-      });
-    }
-    cachedServerNotes = loadedNotes;
-    notifyNoteListeners();
-  });
-
-  notifyNoteListeners();
-
-  return () => {
-      const index = noteListeners.indexOf(callback);
-      if (index > -1) noteListeners.splice(index, 1);
-      unsubscribe();
-  };
-};
-
-export const addNote = async (noteData: Omit<Note, 'id'>) => {
-  const newId = generateId();
-  const newNote: Note = { ...noteData, id: newId, pendingSync: true };
-  
+export const addNote = async (data: Omit<Note, 'id'>) => {
+  const id = generateId();
+  const note = { ...data, id, pendingSync: true };
   const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
-  pending.push(newNote);
+  pending.push(note);
   setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending);
-  
   notifyNoteListeners();
   if (isOnline()) syncAllPendingData();
 };
 
 export const updateNote = async (note: Note) => {
   const pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
-  const index = pending.findIndex(n => n.id === note.id);
-  
-  if (index >= 0) {
-      pending[index] = { ...note, pendingSync: true };
-      setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending);
-  } else {
-      pending.push({ ...note, pendingSync: true });
-      setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending);
-  }
-
+  const idx = pending.findIndex(n => n.id === note.id);
+  if (idx >= 0) pending[idx] = { ...note, pendingSync: true };
+  else pending.push({ ...note, pendingSync: true });
+  setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending);
   notifyNoteListeners();
   if (isOnline()) syncAllPendingData();
 };
 
-export const deleteNote = async (noteId: string) => {
-  // Remove from pending
+export const deleteNote = async (id: string) => {
+  if (!currentUid) return;
+  const uid = currentUid;
   let pending = getLocalPending<Note>(LOCAL_STORAGE_KEY_NOTES);
-  pending = pending.filter(n => n.id !== noteId);
-  setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending);
-  
-  // Hide from cache
-  cachedServerNotes = cachedServerNotes.filter(n => n.id !== noteId);
+  setLocalPending(LOCAL_STORAGE_KEY_NOTES, pending.filter(n => n.id !== id));
+  cachedServerNotes = cachedServerNotes.filter(n => n.id !== id);
   notifyNoteListeners();
 
-  if (isOnline()) {
-      const noteRef = ref(db, `notes/${SHARED_NAMESPACE}/${noteId}`);
-      await remove(noteRef);
-  } else {
-      // Queue deletion
-       const pendingDeletions = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
-       pendingDeletions.push({ id: noteId, path: `notes/${SHARED_NAMESPACE}/${noteId}` });
-       setLocalPending(LOCAL_STORAGE_KEY_DELETED, pendingDeletions);
+  if (isOnline()) await remove(ref(db, `milkData/${uid}/notes/${id}`));
+  else {
+    const deletes = getLocalPending<{id: string, path: string}>(LOCAL_STORAGE_KEY_DELETED);
+    deletes.push({ id, path: `milkData/${uid}/notes/${id}` });
+    setLocalPending(LOCAL_STORAGE_KEY_DELETED, deletes);
   }
 };
