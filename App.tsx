@@ -16,6 +16,7 @@ import { Sidebar } from './components/Sidebar';
 import { ReminderModal } from './components/ReminderModal';
 import { FloatingCalculator } from './components/FloatingCalculator';
 import { AuthView } from './components/AuthView';
+import { AppLock } from './components/AppLock';
 import { AppView, MilkRecord, Note } from './types';
 import { 
   subscribeToRecords, 
@@ -46,6 +47,10 @@ const App: React.FC = () => {
   const [isReminderOpen, setIsReminderOpen] = useState(false);
   const hasShownRemindersRef = useRef(false);
 
+  // App Lock State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [activePin, setActivePin] = useState<string | null>(null);
+
   // Auth Logic
   useEffect(() => {
     const unsubscribe = subscribeToAuth((authenticatedUser) => {
@@ -56,12 +61,25 @@ const App: React.FC = () => {
         setNotes([]);
         setReminderNotes([]);
         setCurrentView(AppView.HOME);
+        setIsUnlocked(false);
       }
     });
 
     return () => {
       unsubscribe();
     };
+  }, []);
+
+  // Sync Settings (Sound, Lock)
+  useEffect(() => {
+    const syncSettings = () => {
+      const settings = JSON.parse(localStorage.getItem('dairyTrackSettings') || '{}');
+      setActivePin(settings.appLockPin || null);
+    };
+
+    syncSettings();
+    window.addEventListener('storage', syncSettings);
+    return () => window.removeEventListener('storage', syncSettings);
   }, []);
 
   // Data Subscriptions (Only when user exists)
@@ -147,7 +165,12 @@ const App: React.FC = () => {
     return <AuthView />;
   }
 
-  // 3. Main Application
+  // 3. Security Guard (App Lock)
+  if (activePin && !isUnlocked) {
+    return <AppLock savedPin={activePin} onUnlock={() => setIsUnlocked(true)} />;
+  }
+
+  // 4. Main Application
   return (
     <div className="h-[100dvh] w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden relative">
       {currentView === AppView.HOME && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
