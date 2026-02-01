@@ -1,6 +1,8 @@
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getDatabase, ref, onValue, set, remove, update, get } from 'firebase/database';
+// @ts-ignore - Added to resolve 'no exported member' errors which can occur due to environment-specific module resolution issues in Firebase
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
@@ -23,9 +25,22 @@ const firebaseConfig = {
   measurementId: "G-WTVFES3PS3"
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase App only if not already initialized
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getDatabase(app);
 const auth = getAuth(app);
+
+// Initialize Analytics safely
+if (typeof window !== 'undefined') {
+  isSupported().then((supported) => {
+    if (supported) {
+      getAnalytics(app);
+      console.log('Firebase Analytics initialized successfully');
+    }
+  }).catch(err => {
+    console.warn('Firebase Analytics not supported in this environment:', err);
+  });
+}
 
 let currentUid: string | null = null;
 
