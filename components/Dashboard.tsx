@@ -1,8 +1,6 @@
-
-import React, { useMemo, useState } from 'react';
-import { Milk, BarChart3, CalendarDays, Calculator, FileText, StickyNote, ChevronRight, Calendar, Droplets, Banknote, ClipboardCheck, Sparkles, Loader2 } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Milk, BarChart3, CalendarDays, Calculator, FileText, StickyNote, ChevronRight, Calendar, Droplets, Banknote, ClipboardCheck } from 'lucide-react';
 import { AppView, MilkRecord } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface DashboardProps {
   onAddMilk: () => void;
@@ -11,29 +9,6 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, records = [] }) => {
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-
-  // Generate AI Insight based on dairy records using Gemini
-  const generateAiInsight = async () => {
-    if (!records || records.length === 0) return;
-    setIsAiLoading(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // Use gemini-3-flash-preview for quick summarization tasks
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Analyze these milk production records: ${JSON.stringify(records.slice(0, 15))}. 
-        Provide a single short professional insight (max 15 words) for the farmer about their production trends.`,
-      });
-      setAiInsight(response.text?.trim() || "Ready to track more records.");
-    } catch (err) {
-      console.error("AI Insight Error:", err);
-      setAiInsight("Unable to generate insight at this time.");
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
   
   const stats = useMemo(() => {
     const safeRecords = Array.isArray(records) ? records : [];
@@ -83,11 +58,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, r
     <div className="h-full overflow-y-auto no-scrollbar pb-32">
       <div className="p-6 pt-24 space-y-8 animate-in fade-in duration-500">
         
-        {/* Welcome Card */}
+        {/* Ultra-Compact Professional Welcome Card */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0A58EE] via-[#1E40AF] to-[#1E3A8A] rounded-[2.5rem] p-7 text-white shadow-2xl shadow-blue-900/20">
+          {/* Abstract Mesh BG */}
           <div className="absolute top-[-20%] left-[-10%] w-64 h-64 bg-blue-400 rounded-full blur-[100px] opacity-20"></div>
           
           <div className="relative z-10 flex items-center justify-between">
+            
+            {/* Left Column: Essential Branding */}
             <div className="flex-1 min-w-0 pr-4">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-3">
                   <Calendar size={10} className="text-blue-200" />
@@ -99,7 +77,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, r
                 <p className="text-blue-100/40 text-[9px] font-black uppercase tracking-[0.15em]">Track your dairy production</p>
             </div>
 
+            {/* Right Column: Ultra-Compact Single-Line Stats Stack */}
             <div className="flex flex-col gap-2.5 shrink-0 pl-5 border-l border-white/10">
+                {/* Milk Row */}
                 <div className="flex items-center gap-2">
                     <Droplets size={12} className="text-blue-300 shrink-0" />
                     <div className="flex items-center whitespace-nowrap">
@@ -108,6 +88,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, r
                     </div>
                 </div>
 
+                {/* Earnings Row */}
                 <div className="flex items-center gap-2">
                     <Banknote size={12} className="text-emerald-300 shrink-0" />
                     <div className="flex items-center whitespace-nowrap">
@@ -116,6 +97,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, r
                     </div>
                 </div>
 
+                {/* Logs Row */}
                 <div className="flex items-center gap-2">
                     <ClipboardCheck size={12} className="text-purple-300 shrink-0" />
                     <div className="flex items-center whitespace-nowrap">
@@ -124,32 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAddMilk, onChangeView, r
                     </div>
                 </div>
             </div>
-          </div>
-        </div>
 
-        {/* AI Smart Insight Section */}
-        <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-indigo-100 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 bg-indigo-50 rounded-bl-[2rem] text-indigo-600">
-            <Sparkles size={18} className={isAiLoading ? "animate-pulse" : ""} />
-          </div>
-          <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Smart Analysis</h4>
-          
-          <div className="min-h-[44px] flex items-center">
-            {isAiLoading ? (
-              <div className="flex items-center gap-2 text-indigo-400">
-                <Loader2 size={16} className="animate-spin" />
-                <span className="text-sm font-medium italic">Gemini is analyzing...</span>
-              </div>
-            ) : aiInsight ? (
-              <p className="text-gray-800 text-sm font-bold leading-relaxed pr-8">{aiInsight}</p>
-            ) : (
-              <button 
-                onClick={generateAiInsight}
-                className="text-indigo-600 text-sm font-black flex items-center gap-2 hover:translate-x-1 transition-transform"
-              >
-                Generate Production Insight <ChevronRight size={16} />
-              </button>
-            )}
           </div>
         </div>
 

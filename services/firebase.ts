@@ -1,7 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, remove, update, get } from 'firebase/database';
-// Removed unused getAnalytics import as it was causing export errors in this environment
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
@@ -13,7 +12,6 @@ import {
 } from 'firebase/auth';
 import { MilkRecord, Note } from '../types';
 
-// Updated Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAKOyQ-bm0RN6dllgWRsa3Zi8veUvqu548",
   authDomain: "milkrecord-bc81a.firebaseapp.com",
@@ -25,7 +23,6 @@ const firebaseConfig = {
   measurementId: "G-WTVFES3PS3"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
