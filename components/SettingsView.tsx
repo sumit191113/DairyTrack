@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, VolumeX, FileDown, Lock, Unlock, Trash2, ChevronRight, AlertTriangle, FileText, Table, File, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, FileDown, Lock, Unlock, Trash2, ChevronRight, AlertTriangle, FileText, Table, File, ChevronLeft, FileUp, Info, ClipboardList } from 'lucide-react';
 import { AppView, MilkRecord } from '../types';
+import * as XLSX from 'xlsx';
+import { addRecord } from '../services/firebase';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -24,6 +26,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
   
   // Export State
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showTextImportModal, setShowTextImportModal] = useState(false);
+  const [pastedText, setPastedText] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
   const [exportStep, setExportStep] = useState<'FORMAT' | 'FILTER'>('FORMAT');
   const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'EXCEL' | 'CSV' | null>(null);
   const [filterType, setFilterType] = useState<'ALL' | 'MONTH' | 'RANGE'>('ALL');
@@ -147,6 +155,162 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
     else if (selectedFormat === 'EXCEL') exportToExcel(data);
     else if (selectedFormat === 'PDF') exportToPDF(data);
     handleCloseExport();
+  };
+
+  // --- Import Logic ---
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    setImportError('');
+    setImportSuccess('');
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        if (data.length === 0) {
+          setImportError('Excel file is empty');
+          setImportLoading(false);
+          return;
+        }
+
+        let importedCount = 0;
+        for (const row of data as any[]) {
+          // Map Excel columns to MilkRecord fields
+          // Expected columns: Date, Period, Milk, Amount
+          const date = row.Date || row.date || row.DATE;
+          const quantity = parseFloat(row.Milk || row.milk || row.MILK || row.Quantity || row.quantity || 0);
+          const totalPrice = parseFloat(row.Amount || row.amount || row.AMOUNT || row.TotalPrice || 0);
+          const pricePerLiterInput = parseFloat(row.Rate || row.rate || row.RATE || row.PricePerLiter || 0);
+          
+          // Calculate price per liter if Amount and Milk are provided
+          const pricePerLiter = pricePerLiterInput > 0 ? pricePerLiterInput : (quantity > 0 ? totalPrice / quantity : 0);
+          const finalTotalPrice = totalPrice > 0 ? totalPrice : quantity * pricePerLiter;
+
+          const period = (row.Period || row.period || row.PERIOD || row.Shift || row.shift || 'DAY').toString().toUpperCase();
+          const shift = period === 'NIGHT' ? 'NIGHT' : 'DAY';
+          const status = (row.Status || row.status || row.STATUS || 'UNPAID').toUpperCase() === 'PAID' ? 'PAID' : 'UNPAID';
+
+          if (date && quantity > 0 && pricePerLiter > 0) {
+            // Try to parse date
+            let formattedDate = '';
+            try {
+              const d = new Date(date);
+              if (!isNaN(d.getTime())) {
+                formattedDate = d.toISOString().split('T')[0];
+              } else {
+                // Handle DD-MM-YYYY or DD/MM/YYYY
+                const parts = date.toString().split(/[-/]/);
+                if (parts.length === 3) {
+                  if (parts[0].length === 4) formattedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                  else formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to parse date:', date);
+              continue;
+            }
+
+            if (formattedDate) {
+              await addRecord({
+                date: formattedDate,
+                quantity,
+                pricePerLiter,
+                totalPrice: finalTotalPrice,
+                shift: shift as 'DAY' | 'NIGHT',
+                status: status as 'PAID' | 'UNPAID',
+                timestamp: new Date(formattedDate).getTime()
+              });
+              importedCount++;
+            }
+          }
+        }
+
+        setImportSuccess(`Successfully imported ${importedCount} records!`);
+        setTimeout(() => setShowImportModal(false), 2000);
+      } catch (err) {
+        setImportError('Failed to parse Excel file. Please check the format.');
+        console.error(err);
+      } finally {
+        setImportLoading(false);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleImportPastedText = async () => {
+    if (!pastedText.trim()) return;
+    setImportLoading(true);
+    setImportError('');
+    setImportSuccess('');
+
+    try {
+      const lines = pastedText.split('\n').filter(l => l.trim());
+      let importedCount = 0;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.toLowerCase().includes('date,period,milk')) continue; // Skip header
+
+        // Simple CSV split logic that handles quotes
+        const parts: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let char of line) {
+          if (char === '"') inQuotes = !inQuotes;
+          else if (char === ',' && !inQuotes) {
+            parts.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        parts.push(current.trim());
+
+        if (parts.length >= 5) {
+          const dateStr = parts[0]; // e.g. "19 January, 2026"
+          const period = parts[1].toUpperCase().includes('NIGHT') ? 'NIGHT' : 'DAY';
+          const milk = parseFloat(parts[2]);
+          const perLiter = parseFloat(parts[3]);
+          const amount = parseFloat(parts[4]);
+
+          if (dateStr && !isNaN(milk) && !isNaN(amount)) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+              const formattedDate = d.toISOString().split('T')[0];
+              await addRecord({
+                date: formattedDate,
+                quantity: milk,
+                pricePerLiter: perLiter || (amount / milk),
+                totalPrice: amount,
+                shift: period as 'DAY' | 'NIGHT',
+                status: 'UNPAID',
+                timestamp: d.getTime()
+              });
+              importedCount++;
+            }
+          }
+        }
+      }
+      setImportSuccess(`Successfully imported ${importedCount} records!`);
+      setTimeout(() => {
+        setShowTextImportModal(false);
+        setPastedText('');
+        setImportSuccess('');
+      }, 2000);
+    } catch (err) {
+      setImportError('Failed to parse text. Please check the format.');
+      console.error(err);
+    } finally {
+      setImportLoading(false);
+    }
   };
 
   const exportToCSV = (data: MilkRecord[]) => {
@@ -302,6 +466,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                     <div className="flex items-center space-x-4"><div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileDown size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Export Records</p><p className="text-xs text-gray-500">PDF, Excel, or CSV</p></div></div>
                     <ChevronRight size={20} className="text-gray-300" />
                 </button>
+                <button onClick={() => setShowImportModal(true)} className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:scale-[0.98]">
+                    <div className="flex items-center space-x-4"><div className="p-2.5 bg-green-50 text-green-600 rounded-xl"><FileUp size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Import Records (Excel)</p><p className="text-xs text-gray-500">Upload Excel file</p></div></div>
+                    <ChevronRight size={20} className="text-gray-300" />
+                </button>
+                <button onClick={() => setShowTextImportModal(true)} className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:scale-[0.98]">
+                    <div className="flex items-center space-x-4"><div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><ClipboardList size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Import Records (Text)</p><p className="text-xs text-gray-500">Paste your records</p></div></div>
+                    <ChevronRight size={20} className="text-gray-300" />
+                </button>
                 <button onClick={() => onNavigate(AppView.TRASH)} className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center space-x-4"><div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><Trash2 size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Recently Deleted</p><p className="text-xs text-gray-500">Recover lost records</p></div></div>
                     <ChevronRight size={20} className="text-gray-300" />
@@ -341,6 +513,140 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                   </div>
                 )}
                 <button onClick={handleCloseExport} className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm">Cancel</button>
+            </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => !importLoading && setShowImportModal(false)}>
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 animate-in slide-in-from-bottom-10 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Import Records</h3>
+                
+                <div className="bg-blue-50 p-4 rounded-2xl mb-6">
+                    <div className="flex items-start space-x-3">
+                        <Info size={20} className="text-blue-600 mt-0.5 shrink-0" />
+                        <div className="text-xs text-blue-800 leading-relaxed">
+                            <p className="font-bold mb-1">Excel Format Guide:</p>
+                            <p>Your Excel should have these columns:</p>
+                            <ul className="list-disc list-inside mt-1 space-y-0.5">
+                                <li><span className="font-bold">Date</span> (YYYY-MM-DD)</li>
+                                <li><span className="font-bold">Period</span> (Day/Night)</li>
+                                <li><span className="font-bold">Milk</span> (Quantity in Liters)</li>
+                                <li><span className="font-bold">Amount</span> (Total Price)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {importError && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mb-4 text-center animate-shake">
+                        {importError}
+                    </div>
+                )}
+
+                {importSuccess && (
+                    <div className="bg-green-50 text-green-600 p-3 rounded-xl text-xs font-bold mb-4 text-center">
+                        {importSuccess}
+                    </div>
+                )}
+
+                <div className="relative">
+                    <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        onChange={handleImportFile}
+                        disabled={importLoading}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <div className={`w-full py-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center space-y-2 transition-colors ${importLoading ? 'bg-gray-50 border-gray-200' : 'bg-blue-50/30 border-blue-200 hover:bg-blue-50'}`}>
+                        {importLoading ? (
+                            <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                <p className="text-sm font-bold text-gray-500">Importing...</p>
+                            </div>
+                        ) : (
+                            <>
+                                <FileUp size={32} className="text-blue-600" />
+                                <p className="text-sm font-bold text-gray-700">Click to upload Excel</p>
+                                <p className="text-xs text-gray-400">Max size 5MB</p>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <button 
+                    onClick={() => setShowImportModal(false)} 
+                    disabled={importLoading}
+                    className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+      )}
+
+      {showTextImportModal && (
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => !importLoading && setShowTextImportModal(false)}>
+            <div className="bg-white w-full max-w-md rounded-[2rem] p-6 animate-in slide-in-from-bottom-10 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Import Text Records</h3>
+                
+                <div className="bg-purple-50 p-4 rounded-2xl mb-6">
+                    <div className="flex items-start space-x-3">
+                        <Info size={20} className="text-purple-600 mt-0.5 shrink-0" />
+                        <div className="text-xs text-purple-800 leading-relaxed">
+                            <p className="font-bold mb-1">Text Format Guide:</p>
+                            <p>Paste records in this format (CSV):</p>
+                            <p className="font-mono bg-white/50 p-1 rounded mt-1 text-[10px]">Date,Period,Milk,Per Liter,Amount</p>
+                            <p className="mt-2">Example:</p>
+                            <p className="font-mono bg-white/50 p-1 rounded mt-1 text-[10px]">"19 January, 2026",NIGHT,2.8,35.11,98.3</p>
+                        </div>
+                    </div>
+                </div>
+
+                {importError && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mb-4 text-center animate-shake">
+                        {importError}
+                    </div>
+                )}
+
+                {importSuccess && (
+                    <div className="bg-green-50 text-green-600 p-3 rounded-xl text-xs font-bold mb-4 text-center">
+                        {importSuccess}
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    <textarea 
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder='Paste your records here...'
+                        disabled={importLoading}
+                        className="w-full h-48 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:border-purple-500 transition-colors resize-none font-mono"
+                    />
+                    
+                    <button 
+                        onClick={handleImportPastedText}
+                        disabled={importLoading || !pastedText.trim()}
+                        className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 ${importLoading || !pastedText.trim() ? 'bg-gray-200 text-gray-400' : 'bg-purple-600 text-white shadow-purple-200'}`}
+                    >
+                        {importLoading ? (
+                            <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <>
+                                <ClipboardList size={20} />
+                                <span>Import Records</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                <button 
+                    onClick={() => setShowTextImportModal(false)} 
+                    disabled={importLoading}
+                    className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm disabled:opacity-50"
+                >
+                    Cancel
+                </button>
             </div>
         </div>
       )}
