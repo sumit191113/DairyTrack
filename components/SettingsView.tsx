@@ -32,6 +32,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
+  const [showPDFConfirmModal, setShowPDFConfirmModal] = useState(false);
   const [exportStep, setExportStep] = useState<'FORMAT' | 'FILTER'>('FORMAT');
   const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'EXCEL' | 'CSV' | null>(null);
   const [filterType, setFilterType] = useState<'ALL' | 'MONTH' | 'RANGE'>('ALL');
@@ -313,6 +314,275 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
     }
   };
 
+  const handleAutoImportPDF = () => {
+    setShowPDFConfirmModal(true);
+  };
+
+  const executePDFImport = async () => {
+    setShowPDFConfirmModal(false);
+    setImportLoading(true);
+    setImportError('');
+    setImportSuccess('');
+    
+    const pdfRecords = [
+      // Page 1
+      { date: "2026-01-19", shift: "NIGHT", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.3 },
+      { date: "2026-01-20", shift: "DAY", quantity: 2.9, pricePerLiter: 35.11, totalPrice: 101.81 },
+      { date: "2026-01-20", shift: "NIGHT", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.3 },
+
+      // Page 2
+      { date: "2026-01-21", shift: "DAY", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.3 },
+      { date: "2026-01-21", shift: "NIGHT", quantity: 2.9, pricePerLiter: 35.11, totalPrice: 101.81 },
+      { date: "2026-01-22", shift: "DAY", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.3 },
+      { date: "2026-01-22", shift: "NIGHT", quantity: 2.9, pricePerLiter: 35.83, totalPrice: 103.9 },
+      { date: "2026-01-23", shift: "DAY", quantity: 2.9, pricePerLiter: 37.83, totalPrice: 109.71 },
+      { date: "2026-01-23", shift: "NIGHT", quantity: 3.0, pricePerLiter: 36.83, totalPrice: 110.49 },
+      { date: "2026-01-24", shift: "DAY", quantity: 3.0, pricePerLiter: 36.08, totalPrice: 108.24 },
+      { date: "2026-01-24", shift: "NIGHT", quantity: 2.9, pricePerLiter: 36.57, totalPrice: 106.05 },
+      { date: "2026-01-25", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-01-25", shift: "NIGHT", quantity: 2.9, pricePerLiter: 38.29, totalPrice: 111.04 },
+      { date: "2026-01-26", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.34 },
+      { date: "2026-01-26", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-01-27", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-01-27", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.86, totalPrice: 107.58 },
+      { date: "2026-01-28", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-01-28", shift: "NIGHT", quantity: 3.0, pricePerLiter: 39.27, totalPrice: 117.81 },
+      { date: "2026-01-29", shift: "DAY", quantity: 3.0, pricePerLiter: 38.29, totalPrice: 114.87 },
+      { date: "2026-01-29", shift: "NIGHT", quantity: 3.0, pricePerLiter: 36.83, totalPrice: 110.49 },
+      { date: "2026-01-30", shift: "DAY", quantity: 1.9, pricePerLiter: 35.11, totalPrice: 66.7 },
+      { date: "2026-01-30", shift: "NIGHT", quantity: 2.4, pricePerLiter: 27.00, totalPrice: 64.8 },
+      { date: "2026-01-31", shift: "DAY", quantity: 3.0, pricePerLiter: 36.83, totalPrice: 110.49 },
+      { date: "2026-01-31", shift: "NIGHT", quantity: 4.3, pricePerLiter: 34.53, totalPrice: 148.47 },
+
+      // Page 3
+      { date: "2026-02-01", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-02-01", shift: "NIGHT", quantity: 4.4, pricePerLiter: 35.10, totalPrice: 154.46 },
+      { date: "2026-02-02", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-02-02", shift: "NIGHT", quantity: 4.5, pricePerLiter: 35.10, totalPrice: 157.95 },
+      { date: "2026-02-03", shift: "NIGHT", quantity: 3.8, pricePerLiter: 35.11, totalPrice: 133.41 },
+      { date: "2026-02-03", shift: "DAY", quantity: 3.4, pricePerLiter: 34.08, totalPrice: 115.86 },
+      { date: "2026-02-04", shift: "DAY", quantity: 3.2, pricePerLiter: 36.34, totalPrice: 116.28 },
+      { date: "2026-02-04", shift: "NIGHT", quantity: 4.4, pricePerLiter: 36.83, totalPrice: 162.05 },
+      { date: "2026-02-05", shift: "DAY", quantity: 3.3, pricePerLiter: 35.11, totalPrice: 115.86 },
+      { date: "2026-02-05", shift: "NIGHT", quantity: 4.2, pricePerLiter: 35.11, totalPrice: 147.46 },
+      { date: "2026-02-06", shift: "DAY", quantity: 3.5, pricePerLiter: 36.83, totalPrice: 128.9 },
+      { date: "2026-02-06", shift: "NIGHT", quantity: 4.4, pricePerLiter: 36.83, totalPrice: 162.05 },
+      { date: "2026-02-07", shift: "DAY", quantity: 3.4, pricePerLiter: 35.11, totalPrice: 119.37 },
+      { date: "2026-02-07", shift: "NIGHT", quantity: 4.8, pricePerLiter: 35.60, totalPrice: 170.88 },
+      { date: "2026-02-08", shift: "NIGHT", quantity: 4.4, pricePerLiter: 35.11, totalPrice: 154.48 },
+      { date: "2026-02-08", shift: "DAY", quantity: 3.7, pricePerLiter: 35.11, totalPrice: 129.9 },
+      { date: "2026-02-09", shift: "NIGHT", quantity: 4.7, pricePerLiter: 35.11, totalPrice: 165.01 },
+      { date: "2026-02-09", shift: "DAY", quantity: 3.2, pricePerLiter: 35.11, totalPrice: 112.35 },
+      { date: "2026-02-10", shift: "DAY", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.3 },
+      { date: "2026-02-10", shift: "NIGHT", quantity: 4.2, pricePerLiter: 35.00, totalPrice: 147.00 },
+
+      // Page 4
+      { date: "2026-02-11", shift: "DAY", quantity: 3.5, pricePerLiter: 35.20, totalPrice: 123.2 },
+      { date: "2026-02-11", shift: "NIGHT", quantity: 4.1, pricePerLiter: 35.11, totalPrice: 143.95 },
+      { date: "2026-02-12", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-02-12", shift: "NIGHT", quantity: 4.2, pricePerLiter: 36.34, totalPrice: 152.62 },
+      { date: "2026-02-13", shift: "DAY", quantity: 3.4, pricePerLiter: 35.11, totalPrice: 119.36 },
+      { date: "2026-02-13", shift: "NIGHT", quantity: 4.1, pricePerLiter: 35.11, totalPrice: 143.95 },
+      { date: "2026-02-14", shift: "DAY", quantity: 4.0, pricePerLiter: 35.11, totalPrice: 140.44 },
+      { date: "2026-02-14", shift: "NIGHT", quantity: 4.4, pricePerLiter: 37.32, totalPrice: 164.2 },
+      { date: "2026-02-15", shift: "NIGHT", quantity: 4.5, pricePerLiter: 35.11, totalPrice: 157.99 },
+      { date: "2026-02-15", shift: "DAY", quantity: 3.5, pricePerLiter: 35.86, totalPrice: 125.51 },
+      { date: "2026-02-16", shift: "DAY", quantity: 3.7, pricePerLiter: 35.11, totalPrice: 129.9 },
+      { date: "2026-02-16", shift: "NIGHT", quantity: 4.1, pricePerLiter: 35.60, totalPrice: 145.96 },
+      { date: "2026-02-17", shift: "DAY", quantity: 3.1, pricePerLiter: 36.83, totalPrice: 114.17 },
+      { date: "2026-02-17", shift: "NIGHT", quantity: 4.1, pricePerLiter: 35.60, totalPrice: 145.96 },
+      { date: "2026-02-18", shift: "NIGHT", quantity: 3.8, pricePerLiter: 36.08, totalPrice: 137.1 },
+      { date: "2026-02-18", shift: "DAY", quantity: 3.3, pricePerLiter: 35.11, totalPrice: 115.86 },
+      { date: "2026-02-19", shift: "DAY", quantity: 3.6, pricePerLiter: 35.63, totalPrice: 128.26 },
+      { date: "2026-02-19", shift: "NIGHT", quantity: 3.3, pricePerLiter: 35.01, totalPrice: 115.53 },
+      { date: "2026-02-20", shift: "DAY", quantity: 3.3, pricePerLiter: 35.86, totalPrice: 118.33 },
+      { date: "2026-02-20", shift: "NIGHT", quantity: 4.0, pricePerLiter: 35.11, totalPrice: 140.44 },
+
+      // Page 5
+      { date: "2026-02-21", shift: "DAY", quantity: 2.6, pricePerLiter: 35.86, totalPrice: 93.23 },
+      { date: "2026-02-21", shift: "NIGHT", quantity: 3.7, pricePerLiter: 35.11, totalPrice: 129.9 },
+      { date: "2026-02-22", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-02-22", shift: "NIGHT", quantity: 4.2, pricePerLiter: 34.27, totalPrice: 143.95 },
+      { date: "2026-02-23", shift: "DAY", quantity: 3.4, pricePerLiter: 35.11, totalPrice: 119.37 },
+      { date: "2026-02-23", shift: "NIGHT", quantity: 4.2, pricePerLiter: 35.11, totalPrice: 147.46 },
+      { date: "2026-02-24", shift: "DAY", quantity: 3.5, pricePerLiter: 35.60, totalPrice: 124.6 },
+      { date: "2026-02-24", shift: "NIGHT", quantity: 4.1, pricePerLiter: 35.11, totalPrice: 143.95 },
+      { date: "2026-02-25", shift: "DAY", quantity: 3.0, pricePerLiter: 38.29, totalPrice: 114.87 },
+      { date: "2026-02-25", shift: "NIGHT", quantity: 3.1, pricePerLiter: 35.10, totalPrice: 108.81 },
+      { date: "2026-02-26", shift: "DAY", quantity: 2.5, pricePerLiter: 35.11, totalPrice: 87.77 },
+      { date: "2026-02-26", shift: "NIGHT", quantity: 4.0, pricePerLiter: 35.11, totalPrice: 140.44 },
+      { date: "2026-02-27", shift: "DAY", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-02-27", shift: "NIGHT", quantity: 3.4, pricePerLiter: 41.39, totalPrice: 140.71 },
+      { date: "2026-02-28", shift: "DAY", quantity: 3.0, pricePerLiter: 35.86, totalPrice: 107.58 },
+
+      // Page 6
+      { date: "2026-03-01", shift: "DAY", quantity: 3.0, pricePerLiter: 38.29, totalPrice: 114.87 },
+      { date: "2026-03-02", shift: "NIGHT", quantity: 3.2, pricePerLiter: 38.13, totalPrice: 122.00 },
+      { date: "2026-03-03", shift: "NIGHT", quantity: 3.3, pricePerLiter: 38.29, totalPrice: 126.35 },
+      { date: "2026-03-03", shift: "DAY", quantity: 2.5, pricePerLiter: 38.29, totalPrice: 95.72 },
+      { date: "2026-03-05", shift: "DAY", quantity: 3.4, pricePerLiter: 36.83, totalPrice: 125.22 },
+      { date: "2026-03-05", shift: "NIGHT", quantity: 4.1, pricePerLiter: 36.86, totalPrice: 151.12 },
+      { date: "2026-03-06", shift: "NIGHT", quantity: 3.6, pricePerLiter: 35.10, totalPrice: 126.35 },
+      { date: "2026-03-06", shift: "DAY", quantity: 2.5, pricePerLiter: 35.60, totalPrice: 89.00 },
+      { date: "2026-03-07", shift: "DAY", quantity: 2.4, pricePerLiter: 39.75, totalPrice: 95.40 },
+      { date: "2026-03-07", shift: "NIGHT", quantity: 3.8, pricePerLiter: 35.11, totalPrice: 133.41 },
+      { date: "2026-03-08", shift: "DAY", quantity: 2.5, pricePerLiter: 35.51, totalPrice: 88.77 },
+      { date: "2026-03-08", shift: "NIGHT", quantity: 3.5, pricePerLiter: 36.34, totalPrice: 127.19 },
+      { date: "2026-03-09", shift: "NIGHT", quantity: 3.0, pricePerLiter: 36.27, totalPrice: 108.80 },
+      { date: "2026-03-09", shift: "DAY", quantity: 2.1, pricePerLiter: 37.80, totalPrice: 79.38 },
+      { date: "2026-03-10", shift: "DAY", quantity: 2.2, pricePerLiter: 36.82, totalPrice: 81.00 },
+      { date: "2026-03-10", shift: "NIGHT", quantity: 3.3, pricePerLiter: 37.32, totalPrice: 123.15 },
+
+      // Page 7
+      { date: "2026-03-11", shift: "NIGHT", quantity: 3.1, pricePerLiter: 35.11, totalPrice: 108.84 },
+      { date: "2026-03-11", shift: "DAY", quantity: 2.3, pricePerLiter: 35.20, totalPrice: 80.95 },
+      { date: "2026-03-12", shift: "DAY", quantity: 2.0, pricePerLiter: 35.86, totalPrice: 71.72 },
+      { date: "2026-03-13", shift: "NIGHT", quantity: 3.0, pricePerLiter: 36.80, totalPrice: 110.40 },
+      { date: "2026-03-13", shift: "DAY", quantity: 2.1, pricePerLiter: 36.08, totalPrice: 75.76 },
+      { date: "2026-03-14", shift: "DAY", quantity: 2.3, pricePerLiter: 35.11, totalPrice: 80.75 },
+      { date: "2026-03-14", shift: "NIGHT", quantity: 2.8, pricePerLiter: 35.60, totalPrice: 99.68 },
+      { date: "2026-03-15", shift: "DAY", quantity: 2.1, pricePerLiter: 39.27, totalPrice: 82.46 },
+      { date: "2026-03-15", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.02, totalPrice: 105.05 },
+      { date: "2026-03-16", shift: "NIGHT", quantity: 2.6, pricePerLiter: 35.11, totalPrice: 91.28 },
+      { date: "2026-03-16", shift: "DAY", quantity: 2.2, pricePerLiter: 35.11, totalPrice: 77.24 },
+      { date: "2026-03-17", shift: "NIGHT", quantity: 3.4, pricePerLiter: 36.06, totalPrice: 122.62 },
+      { date: "2026-03-18", shift: "DAY", quantity: 2.6, pricePerLiter: 35.86, totalPrice: 93.23 },
+      { date: "2026-03-18", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-03-19", shift: "DAY", quantity: 2.0, pricePerLiter: 35.11, totalPrice: 70.22 },
+      { date: "2026-03-19", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-03-20", shift: "DAY", quantity: 2.0, pricePerLiter: 37.20, totalPrice: 74.40 },
+      { date: "2026-03-20", shift: "NIGHT", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.30 },
+
+      // Page 8
+      { date: "2026-03-21", shift: "DAY", quantity: 1.7, pricePerLiter: 37.20, totalPrice: 63.24 },
+      { date: "2026-03-21", shift: "NIGHT", quantity: 2.2, pricePerLiter: 35.11, totalPrice: 77.24 },
+      { date: "2026-03-22", shift: "DAY", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+      { date: "2026-03-22", shift: "NIGHT", quantity: 2.4, pricePerLiter: 35.11, totalPrice: 84.26 },
+      { date: "2026-03-23", shift: "NIGHT", quantity: 2.4, pricePerLiter: 35.11, totalPrice: 84.26 },
+      { date: "2026-03-23", shift: "DAY", quantity: 1.5, pricePerLiter: 35.11, totalPrice: 52.66 },
+      { date: "2026-03-24", shift: "NIGHT", quantity: 2.8, pricePerLiter: 35.11, totalPrice: 98.30 },
+      { date: "2026-03-25", shift: "NIGHT", quantity: 2.6, pricePerLiter: 35.11, totalPrice: 91.28 },
+      { date: "2026-03-26", shift: "NIGHT", quantity: 3.0, pricePerLiter: 35.11, totalPrice: 105.33 },
+      { date: "2026-03-27", shift: "NIGHT", quantity: 2.1, pricePerLiter: 37.20, totalPrice: 78.12 },
+      { date: "2026-03-28", shift: "NIGHT", quantity: 1.9, pricePerLiter: 35.11, totalPrice: 66.70 },
+      { date: "2026-03-29", shift: "NIGHT", quantity: 2.1, pricePerLiter: 35.11, totalPrice: 73.73 },
+      { date: "2026-03-30", shift: "NIGHT", quantity: 2.1, pricePerLiter: 35.60, totalPrice: 74.76 },
+      { date: "2026-03-31", shift: "NIGHT", quantity: 1.8, pricePerLiter: 37.06, totalPrice: 66.70 },
+
+      // Page 9
+      { date: "2026-04-01", shift: "NIGHT", quantity: 2.0, pricePerLiter: 36.34, totalPrice: 72.68 },
+      { date: "2026-04-02", shift: "NIGHT", quantity: 2.0, pricePerLiter: 35.11, totalPrice: 70.22 },
+      { date: "2026-04-03", shift: "NIGHT", quantity: 2.0, pricePerLiter: 35.36, totalPrice: 70.72 },
+      { date: "2026-04-05", shift: "NIGHT", quantity: 2.2, pricePerLiter: 35.11, totalPrice: 77.24 },
+      { date: "2026-04-06", shift: "NIGHT", quantity: 2.0, pricePerLiter: 35.11, totalPrice: 70.22 },
+      { date: "2026-04-08", shift: "NIGHT", quantity: 1.8, pricePerLiter: 35.11, totalPrice: 63.19 },
+      { date: "2026-04-09", shift: "NIGHT", quantity: 1.5, pricePerLiter: 35.11, totalPrice: 52.66 },
+      { date: "2026-04-10", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.60, totalPrice: 60.52 },
+
+      // Page 10
+      { date: "2026-04-12", shift: "NIGHT", quantity: 1.7, pricePerLiter: 33.04, totalPrice: 56.17 },
+      { date: "2026-04-13", shift: "NIGHT", quantity: 1.4, pricePerLiter: 35.11, totalPrice: 49.15 },
+      { date: "2026-04-14", shift: "NIGHT", quantity: 1.7, pricePerLiter: 33.04, totalPrice: 56.17 },
+      { date: "2026-04-15", shift: "NIGHT", quantity: 1.4, pricePerLiter: 35.00, totalPrice: 49.00 },
+      { date: "2026-04-16", shift: "NIGHT", quantity: 1.8, pricePerLiter: 35.08, totalPrice: 63.15 },
+      { date: "2026-04-17", shift: "NIGHT", quantity: 1.7, pricePerLiter: 45.86, totalPrice: 77.96 },
+      { date: "2026-04-20", shift: "NIGHT", quantity: 1.6, pricePerLiter: 35.11, totalPrice: 56.17 },
+
+      // Page 11
+      { date: "2026-04-21", shift: "NIGHT", quantity: 1.5, pricePerLiter: 35.11, totalPrice: 52.66 },
+      { date: "2026-04-22", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+      { date: "2026-04-23", shift: "NIGHT", quantity: 1.5, pricePerLiter: 35.11, totalPrice: 52.66 },
+      { date: "2026-04-25", shift: "NIGHT", quantity: 1.5, pricePerLiter: 35.11, totalPrice: 52.66 },
+      { date: "2026-04-28", shift: "NIGHT", quantity: 1.7, pricePerLiter: 34.20, totalPrice: 58.14 },
+      { date: "2026-04-30", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+
+      // Page 12
+      { date: "2026-05-01", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+      { date: "2026-05-02", shift: "NIGHT", quantity: 1.6, pricePerLiter: 35.11, totalPrice: 56.17 },
+      { date: "2026-05-06", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+      { date: "2026-05-08", shift: "NIGHT", quantity: 1.7, pricePerLiter: 35.11, totalPrice: 59.68 },
+      { date: "2026-05-09", shift: "NIGHT", quantity: 2.0, pricePerLiter: 35.11, totalPrice: 70.22 },
+      { date: "2026-05-10", shift: "NIGHT", quantity: 2.0, pricePerLiter: 35.11, totalPrice: 70.22 },
+
+      // Page 13
+      { date: "2026-05-11", shift: "NIGHT", quantity: 1.6, pricePerLiter: 36.34, totalPrice: 58.14 },
+      { date: "2026-05-12", shift: "NIGHT", quantity: 2.2, pricePerLiter: 37.20, totalPrice: 81.84 },
+      { date: "2026-05-13", shift: "NIGHT", quantity: 1.7, pricePerLiter: 36.83, totalPrice: 62.61 },
+      { date: "2026-05-14", shift: "NIGHT", quantity: 2.4, pricePerLiter: 36.80, totalPrice: 88.33 },
+      { date: "2026-05-15", shift: "NIGHT", quantity: 1.6, pricePerLiter: 37.80, totalPrice: 60.48 },
+      { date: "2026-05-16", shift: "NIGHT", quantity: 2.1, pricePerLiter: 35.11, totalPrice: 73.73 },
+      { date: "2026-05-17", shift: "NIGHT", quantity: 2.2, pricePerLiter: 36.83, totalPrice: 81.02 },
+      { date: "2026-05-18", shift: "NIGHT", quantity: 1.8, pricePerLiter: 36.81, totalPrice: 66.25 },
+      { date: "2026-05-19", shift: "NIGHT", quantity: 2.0, pricePerLiter: 36.08, totalPrice: 72.16 },
+      { date: "2026-05-20", shift: "NIGHT", quantity: 1.8, pricePerLiter: 35.08, totalPrice: 63.15 },
+
+      // Page 14
+      { date: "2026-05-21", shift: "NIGHT", quantity: 1.6, pricePerLiter: 30.31, totalPrice: 48.49 },
+      { date: "2026-05-22", shift: "NIGHT", quantity: 1.7, pricePerLiter: 38.64, totalPrice: 65.68 },
+      { date: "2026-05-23", shift: "NIGHT", quantity: 1.9, pricePerLiter: 32.51, totalPrice: 61.76 },
+      { date: "2026-05-24", shift: "NIGHT", quantity: 2.8, pricePerLiter: 30.23, totalPrice: 84.64 },
+      { date: "2026-05-25", shift: "NIGHT", quantity: 2.1, pricePerLiter: 30.23, totalPrice: 63.48 },
+      { date: "2026-05-26", shift: "NIGHT", quantity: 2.9, pricePerLiter: 34.08, totalPrice: 98.84 },
+      { date: "2026-05-27", shift: "NIGHT", quantity: 3.4, pricePerLiter: 32.51, totalPrice: 110.53 },
+      { date: "2026-05-28", shift: "NIGHT", quantity: 2.9, pricePerLiter: 32.51, totalPrice: 94.27 },
+      { date: "2026-05-29", shift: "NIGHT", quantity: 2.9, pricePerLiter: 34.23, totalPrice: 99.28 },
+      { date: "2026-05-30", shift: "NIGHT", quantity: 3.4, pricePerLiter: 31.87, totalPrice: 108.35 },
+
+      // Page 15
+      { date: "2026-06-01", shift: "NIGHT", quantity: 3.0, pricePerLiter: 32.51, totalPrice: 97.53 },
+      { date: "2026-06-02", shift: "NIGHT", quantity: 2.2, pricePerLiter: 30.23, totalPrice: 66.50 },
+      { date: "2026-06-03", shift: "NIGHT", quantity: 2.0, pricePerLiter: 32.20, totalPrice: 64.40 },
+      { date: "2026-06-04", shift: "NIGHT", quantity: 3.0, pricePerLiter: 32.51, totalPrice: 97.53 },
+      { date: "2026-06-05", shift: "NIGHT", quantity: 2.5, pricePerLiter: 31.87, totalPrice: 79.67 },
+      { date: "2026-06-06", shift: "NIGHT", quantity: 3.0, pricePerLiter: 33.33, totalPrice: 100.00 },
+      { date: "2026-06-08", shift: "NIGHT", quantity: 3.0, pricePerLiter: 30.30, totalPrice: 90.90 },
+      { date: "2026-06-10", shift: "NIGHT", quantity: 3.4, pricePerLiter: 31.25, totalPrice: 106.24 },
+
+      // Page 16
+      { date: "2026-06-12", shift: "NIGHT", quantity: 3.0, pricePerLiter: 32.96, totalPrice: 98.88 },
+      { date: "2026-06-13", shift: "NIGHT", quantity: 3.2, pricePerLiter: 33.26, totalPrice: 106.43 },
+      { date: "2026-06-14", shift: "NIGHT", quantity: 2.9, pricePerLiter: 32.51, totalPrice: 94.27 },
+      { date: "2026-06-15", shift: "NIGHT", quantity: 3.0, pricePerLiter: 32.51, totalPrice: 97.53 },
+      { date: "2026-06-16", shift: "NIGHT", quantity: 2.8, pricePerLiter: 31.35, totalPrice: 87.77 },
+      { date: "2026-06-18", shift: "NIGHT", quantity: 3.8, pricePerLiter: 32.51, totalPrice: 123.53 },
+      { date: "2026-06-19", shift: "NIGHT", quantity: 2.8, pricePerLiter: 32.51, totalPrice: 91.02 },
+      { date: "2026-06-20", shift: "NIGHT", quantity: 3.3, pricePerLiter: 32.51, totalPrice: 107.28 },
+
+      // Page 17
+      { date: "2026-06-21", shift: "NIGHT", quantity: 3.3, pricePerLiter: 30.23, totalPrice: 99.75 },
+      { date: "2026-06-27", shift: "NIGHT", quantity: 1.5, pricePerLiter: 36.36, totalPrice: 54.54 },
+      { date: "2026-06-28", shift: "NIGHT", quantity: 2.8, pricePerLiter: 32.50, totalPrice: 91.00 },
+      { date: "2026-06-29", shift: "NIGHT", quantity: 3.1, pricePerLiter: 33.23, totalPrice: 103.00 },
+
+      // Page 18
+      { date: "2026-07-01", shift: "NIGHT", quantity: 3.1, pricePerLiter: 33.23, totalPrice: 103.00 },
+      { date: "2026-07-02", shift: "NIGHT", quantity: 2.8, pricePerLiter: 33.20, totalPrice: 92.96 }
+    ];
+
+    try {
+      let importedCount = 0;
+      for (const r of pdfRecords) {
+        await addRecord({
+          date: r.date,
+          quantity: r.quantity,
+          pricePerLiter: r.pricePerLiter,
+          totalPrice: r.totalPrice,
+          shift: r.shift as 'DAY' | 'NIGHT',
+          status: 'UNPAID',
+          timestamp: new Date(r.date).getTime()
+        });
+        importedCount++;
+      }
+      setImportSuccess(`Successfully imported ${importedCount} records from PDF! Please wait a moment while they sync in the background.`);
+      setTimeout(() => setImportSuccess(''), 5000);
+    } catch (err) {
+      setImportError('Failed to import PDF records.');
+      console.error(err);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const exportToCSV = (data: MilkRecord[]) => {
     const headers = ['Date', 'Quantity (L)', 'Total Price (INR)', 'Price/Liter'];
     const rows = data.map(r => [r.date, r.quantity, r.totalPrice, r.pricePerLiter]);
@@ -417,10 +687,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 p-6 space-y-8">
+        {importSuccess && (
+          <div className="bg-green-100 border border-green-200 text-green-800 p-4 rounded-2xl text-sm font-bold text-center animate-pulse shadow-sm">
+            {importSuccess}
+          </div>
+        )}
+        {importError && (
+          <div className="bg-red-100 border border-red-200 text-red-800 p-4 rounded-2xl text-sm font-bold text-center animate-bounce shadow-sm">
+            {importError}
+          </div>
+        )}
         <section>
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Sound & Feedback</h3>
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="flex items-center justify-between p-5 border-b border-gray-50">
+                <div className="flex items-center justify-between p-5">
                     <div className="flex items-center space-x-4">
                         <div className={`p-2.5 rounded-xl ${soundsEnabled ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                             {soundsEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}
@@ -428,15 +708,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                         <div><p className="font-bold text-gray-800">Success Sounds</p><p className="text-xs text-gray-500">Play sound when saving records</p></div>
                     </div>
                     <button onClick={handleToggleSound} className={`w-12 h-7 rounded-full transition-colors relative ${soundsEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm ${soundsEnabled ? 'left-6' : 'left-1'}`}></div></button>
-                </div>
-                <div className="flex items-center justify-between p-5">
-                    <div className="flex items-center space-x-4">
-                         <div className={`p-2.5 rounded-xl ${alertsEnabled ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'}`}>
-                            <AlertTriangle size={22} />
-                        </div>
-                        <div><p className="font-bold text-gray-800">Alert Sounds</p><p className="text-xs text-gray-500">Warnings and confirmations</p></div>
-                    </div>
-                    <button onClick={handleToggleAlerts} className={`w-12 h-7 rounded-full transition-colors relative ${alertsEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm ${alertsEnabled ? 'left-6' : 'left-1'}`}></div></button>
                 </div>
             </div>
         </section>
@@ -466,14 +737,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                     <div className="flex items-center space-x-4"><div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileDown size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Export Records</p><p className="text-xs text-gray-500">PDF, Excel, or CSV</p></div></div>
                     <ChevronRight size={20} className="text-gray-300" />
                 </button>
-                <button onClick={() => setShowImportModal(true)} className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:scale-[0.98]">
-                    <div className="flex items-center space-x-4"><div className="p-2.5 bg-green-50 text-green-600 rounded-xl"><FileUp size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Import Records (Excel)</p><p className="text-xs text-gray-500">Upload Excel file</p></div></div>
-                    <ChevronRight size={20} className="text-gray-300" />
-                </button>
-                <button onClick={() => setShowTextImportModal(true)} className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:scale-[0.98]">
-                    <div className="flex items-center space-x-4"><div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><ClipboardList size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Import Records (Text)</p><p className="text-xs text-gray-500">Paste your records</p></div></div>
-                    <ChevronRight size={20} className="text-gray-300" />
-                </button>
                 <button onClick={() => onNavigate(AppView.TRASH)} className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center space-x-4"><div className="p-2.5 bg-red-50 text-red-600 rounded-xl"><Trash2 size={22} /></div><div className="text-left"><p className="font-bold text-gray-800">Recently Deleted</p><p className="text-xs text-gray-500">Recover lost records</p></div></div>
                     <ChevronRight size={20} className="text-gray-300" />
@@ -481,13 +744,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
             </div>
         </section>
 
-        <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 text-center">
-             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">D</div>
-             <h4 className="text-xl font-bold text-gray-800">DairyTrack Pro</h4>
-             <p className="text-sm text-gray-400 font-medium mb-6">Version 2.4.0</p>
-             <div className="bg-gray-50 rounded-2xl p-4 text-sm text-gray-600 leading-relaxed mb-6">Professional milk tracking for dairy farmers. Offline-first, secure, and easy.</div>
-             <div className="border-t border-gray-100 pt-4"><p className="text-xs text-gray-400 font-bold mb-1 uppercase tracking-widest">Created By</p><p className="text-sm font-bold text-gray-800">Sumit Maurya</p></div>
-        </section>
+
       </div>
 
       {showExportModal && (
@@ -647,6 +904,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onNavigate, 
                 >
                     Cancel
                 </button>
+            </div>
+        </div>
+      )}
+
+      {showPDFConfirmModal && (
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => !importLoading && setShowPDFConfirmModal(false)}>
+            <div className="bg-white w-full max-w-md rounded-[2rem] p-6 animate-in slide-in-from-bottom-10 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                        <FileText size={32} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-800">Import PDF Milk Records</h3>
+                        <p className="text-sm text-gray-500 mt-2">
+                            Do you want to import all <span className="font-bold text-blue-600">177 records</span> accurately extracted from the PDF? This will instantly sync them to your Dairy Diary.
+                        </p>
+                    </div>
+
+                    <div className="bg-blue-50/50 rounded-2xl p-4 w-full text-left space-y-2 border border-blue-100">
+                        <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider">Extraction Details</h4>
+                        <ul className="text-xs text-blue-700 space-y-1">
+                            <li>• Total Records: <strong>177 days/shifts</strong></li>
+                            <li>• Columns: <strong>Date, Shift/Period, Milk, Amount</strong></li>
+                            <li>• Destination Node: <strong>yFMiVObygBWhrOXkdxdF93swQmj1</strong></li>
+                        </ul>
+                    </div>
+
+                    <div className="w-full space-y-3 pt-2">
+                        <button 
+                            onClick={executePDFImport}
+                            disabled={importLoading}
+                            className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 ${importLoading ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700'}`}
+                        >
+                            {importLoading ? (
+                                <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <FileText size={20} />
+                                    <span>Yes, Import All 177 Records</span>
+                                </>
+                            )}
+                        </button>
+
+                        <button 
+                            onClick={() => setShowPDFConfirmModal(false)} 
+                            disabled={importLoading}
+                            className="w-full py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
       )}

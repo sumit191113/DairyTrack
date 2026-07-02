@@ -24,22 +24,20 @@ export const RecordList: React.FC<RecordListProps> = ({ records, onBack, onEdit,
       const year = date.getFullYear();
 
       let period = 1;
-      let rangeLabel = `1–10 ${month}`;
+      let rangeLabel = `1 to 10 ${month}`;
       let startD = 1;
       let endD = 10;
 
       if (day > 10 && day <= 20) {
         period = 2;
-        rangeLabel = `11–20 ${month}`;
+        rangeLabel = `11 to 20 ${month}`;
         startD = 11;
         endD = 20;
       } else if (day > 20) {
         period = 3;
-        // Determine last day of month
-        const lastDay = new Date(year, date.getMonth() + 1, 0).getDate();
-        rangeLabel = `21–${lastDay} ${month}`;
+        rangeLabel = `21 to 31 ${month}`;
         startD = 21;
-        endD = lastDay;
+        endD = 31;
       }
 
       const folderId = `${year}-${date.getMonth()}-${period}`;

@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   }, []);
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md px-6 py-4 flex items-center justify-between border-b border-white/20 pt-safe transition-all duration-300">
+    <header className="absolute top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center justify-between border-b border-gray-100/80 shadow-sm pt-safe transition-all duration-300">
       <div className="flex items-center space-x-3">
         <button 
             onClick={onMenuClick}
